@@ -77,9 +77,26 @@ def countComps(sample):
 
 class AudioDataset(data.Dataset):
 
+    @staticmethod
+    def modify_commandline_options(parser, is_train):
+        """Add new dataset-specific options, and rewrite default values for existing options.
+
+        Parameters:
+            parser          -- original option parser
+            is_train (bool) -- whether training phase or test phase. You can use this flag to add training-specific or test-specific options.
+
+        Returns:
+            the modified parser.
+        """
+        parser.add_argument('--class_ids', dest='class_ids', type=str, default=['clean','noisy'], help='class IDS of the two domains.')
+        parser.add_argument('--spec_power', dest='spec_power', type=float, default=1.0, help='Number to raise spectrogram by.')
+        parser.add_argument('--energy', dest='energy', type=float, default=1.0, help='to modify the energy/amplitude of the audio-signals')
+        parser.set_defaults(preprocess='resize',load_size=128, crop_size=128)
+
     def __init__(self,opt):
-        self.dir_A = os.path.join(opt.dataroot,opt.class_ids[0],opt.split)
-        self.dir_B = os.path.join(opt.dataroot,opt.class_ids[1],opt.split)
+        BaseDataset.__init__(self,opt)
+        self.dir_A = os.path.join(opt.dataroot,opt.class_ids[0],opt.phase)
+        self.dir_B = os.path.join(opt.dataroot,opt.class_ids[1],opt.phase)
         self.A_paths = sorted(make_dataset(self.dir_A, opt.max_dataset_size))
         self.B_paths = sorted(make_dataset(self.dir_B, opt.max_dataset_size))
 

@@ -15,9 +15,28 @@ IMG_EXTENSIONS = [
     '.png', '.PNG', '.ppm', '.PPM', '.bmp', '.BMP',
 ]
 
+AUDIO_EXTENSIONS = [
+    '.wav'
+]
+
 
 def is_image_file(filename):
     return any(filename.endswith(extension) for extension in IMG_EXTENSIONS)
+
+def is_audio_file(filename):
+    return any(filename.endswith(extension) for extension in AUDIO_EXTENSIONS)
+
+
+def make_dataset_audio(dir, max_dataset_size=float("inf")):
+    images = []
+    assert os.path.isdir(dir), '%s is not a valid directory' % dir
+
+    for root, _, fnames in sorted(os.walk(dir)):
+        for fname in fnames:
+            if is_audio_file(fname):
+                path = os.path.join(root, fname)
+                images.append(path)
+    return images[:min(max_dataset_size, len(images))]
 
 
 def make_dataset(dir, max_dataset_size=float("inf")):

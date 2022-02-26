@@ -1,10 +1,10 @@
 import torch
 import torch.utils.data as data
 import os
-from data.base_dataset import get_params, get_transform
+from data.base_dataset import get_params, get_transform, BaseDataset
 from data.image_folder import make_dataset
 import multiprocessing
-import mask_cyclegan_vc.utils as util
+import util.util as util
 from PIL import Image
 import random
 import subprocess
@@ -75,7 +75,7 @@ def processInput(filepath, power, state, channels):
 def countComps(sample):
     return len(sample)
 
-class AudioDataset(data.Dataset):
+class AudioDataset(BaseDataset):
 
     @staticmethod
     def modify_commandline_options(parser, is_train):
@@ -92,6 +92,8 @@ class AudioDataset(data.Dataset):
         parser.add_argument('--spec_power', dest='spec_power', type=float, default=1.0, help='Number to raise spectrogram by.')
         parser.add_argument('--energy', dest='energy', type=float, default=1.0, help='to modify the energy/amplitude of the audio-signals')
         parser.set_defaults(preprocess='resize',load_size=128, crop_size=128)
+
+        return parser
 
     def __init__(self,opt):
         BaseDataset.__init__(self,opt)

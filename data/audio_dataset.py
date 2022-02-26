@@ -2,7 +2,7 @@ import torch
 import torch.utils.data as data
 import os
 from data.base_dataset import get_params, get_transform, BaseDataset
-from data.image_folder import make_dataset
+from data.image_folder import make_dataset_audio
 import multiprocessing
 import util.util as util
 from PIL import Image
@@ -99,8 +99,8 @@ class AudioDataset(BaseDataset):
         BaseDataset.__init__(self,opt)
         self.dir_A = os.path.join(opt.dataroot,opt.class_ids[0],opt.phase)
         self.dir_B = os.path.join(opt.dataroot,opt.class_ids[1],opt.phase)
-        self.A_paths = sorted(make_dataset(self.dir_A, opt.max_dataset_size))
-        self.B_paths = sorted(make_dataset(self.dir_B, opt.max_dataset_size))
+        self.A_paths = sorted(make_dataset_audio(self.dir_A, opt.max_dataset_size))
+        self.B_paths = sorted(make_dataset_audio(self.dir_B, opt.max_dataset_size))
 
         self.opt=opt
         self.spec_power = opt.spec_power
@@ -109,7 +109,7 @@ class AudioDataset(BaseDataset):
         self.channels = 1
         self.num_cores = multiprocessing.cpu_count()
         self.data_load_order = opt.data_load_order
-        self.max_mask_len = opt.max_mask_len
+        #self.max_mask_len = opt.max_mask_len
 
         if("passcodec" in opt.preprocess):
             print("------Passing samples through g726 Codec using FFmpeg------")

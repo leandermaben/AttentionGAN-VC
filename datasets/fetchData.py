@@ -40,7 +40,7 @@ Hence it is recommended to use the 'audio' option for the argument --transfer_mo
 
 AUDIO_DATA_PATH_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/Parallel_speech_data'
 SUBDIRECTORIES_DEFAULT = ['clean','noisy']
-CACHE_DEFAULT = '/content/AttentionGAN/data_cache'
+CACHE_DEFAULT = '/content/AttentionGAN-VC/data_cache'
 SAMPLING_RATE = 8000
 CSV_PATH_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/annotations.csv' #Only if --use_genders is not None.Ignored for --transfer_mode [spectrogram|npy]
 NPY_TRAIN_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/rats_train.npy' #Only if --transfer_mode is npy

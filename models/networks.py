@@ -421,7 +421,7 @@ class ResnetGenerator_our(nn.Module):
         self.deconv1_norm_content = nn.InstanceNorm2d(ngf * 2)
         self.deconv2_content = nn.ConvTranspose2d(ngf * 2, ngf, 3, 2, 1, 1)
         self.deconv2_norm_content = nn.InstanceNorm2d(ngf)
-        self.deconv3_content = nn.Conv2d(ngf, 27, 7, 1, 0)
+        self.deconv3_content = nn.Conv2d(ngf, self.output_nc*9, 7, 1, 0)
 
         self.deconv1_attention = nn.ConvTranspose2d(ngf * 4, ngf * 2, 3, 2, 1, 1)
         self.deconv1_norm_attention = nn.InstanceNorm2d(ngf * 2)
@@ -456,17 +456,17 @@ class ResnetGenerator_our(nn.Module):
         x_content = F.pad(x_content, (3, 3, 3, 3), 'reflect')
         content = self.deconv3_content(x_content)
         image = self.tanh(content)
-        image1 = image[:, 0:3, :, :]
-        # print(image1.size()) # [1, 3, 256, 256]
-        image2 = image[:, 3:6, :, :]
-        image3 = image[:, 6:9, :, :]
-        image4 = image[:, 9:12, :, :]
-        image5 = image[:, 12:15, :, :]
-        image6 = image[:, 15:18, :, :]
-        image7 = image[:, 18:21, :, :]
-        image8 = image[:, 21:24, :, :]
-        image9 = image[:, 24:27, :, :]
-        # image10 = image[:, 27:30, :, :]
+        image1 = image[:, 0:self.output_nc*1, :, :]
+        #print('#'*25)
+        #print(image1.size()) # [1, 1, 128, 128]
+        image2 = image[:, self.output_nc*1:self.output_nc*2, :, :]
+        image3 = image[:, self.output_nc*2:self.output_nc*3, :, :]
+        image4 = image[:, self.output_nc*3:self.output_nc*4, :, :]
+        image5 = image[:, self.output_nc*4:self.output_nc*5, :, :]
+        image6 = image[:, self.output_nc*5:self.output_nc*6, :, :]
+        image7 = image[:, self.output_nc*6:self.output_nc*7, :, :]
+        image8 = image[:, self.output_nc*7:self.output_nc*8, :, :]
+        image9 = image[:, self.output_nc*8:self.output_nc*9, :, :]
 
         x_attention = F.relu(self.deconv1_norm_attention(self.deconv1_attention(x)))
         x_attention = F.relu(self.deconv2_norm_attention(self.deconv2_attention(x_attention)))
@@ -488,17 +488,17 @@ class ResnetGenerator_our(nn.Module):
         attention9_ = attention[:, 8:9, :, :]
         attention10_ = attention[:, 9:10, :, :]
 
-        attention1 = attention1_.repeat(1, 3, 1, 1)
+        attention1 = attention1_.repeat(1, self.output_nc, 1, 1)
         # print(attention1.size())
-        attention2 = attention2_.repeat(1, 3, 1, 1)
-        attention3 = attention3_.repeat(1, 3, 1, 1)
-        attention4 = attention4_.repeat(1, 3, 1, 1)
-        attention5 = attention5_.repeat(1, 3, 1, 1)
-        attention6 = attention6_.repeat(1, 3, 1, 1)
-        attention7 = attention7_.repeat(1, 3, 1, 1)
-        attention8 = attention8_.repeat(1, 3, 1, 1)
-        attention9 = attention9_.repeat(1, 3, 1, 1)
-        attention10 = attention10_.repeat(1, 3, 1, 1)
+        attention2 = attention2_.repeat(1, self.output_nc, 1, 1)
+        attention3 = attention3_.repeat(1, self.output_nc, 1, 1)
+        attention4 = attention4_.repeat(1, self.output_nc, 1, 1)
+        attention5 = attention5_.repeat(1, self.output_nc, 1, 1)
+        attention6 = attention6_.repeat(1, self.output_nc, 1, 1)
+        attention7 = attention7_.repeat(1, self.output_nc, 1, 1)
+        attention8 = attention8_.repeat(1, self.output_nc, 1, 1)
+        attention9 = attention9_.repeat(1, self.output_nc, 1, 1)
+        attention10 = attention10_.repeat(1, self.output_nc, 1, 1)
 
         output1 = image1 * attention1
         output2 = image2 * attention2

@@ -87,8 +87,6 @@ class AttentionGANModel(BaseModel):
         self.a1_b, self.a2_b, self.a3_b, self.a4_b, self.a5_b, self.a6_b, self.a7_b, self.a8_b, self.a9_b, self.a10_b, \
         self.i1_b, self.i2_b, self.i3_b, self.i4_b, self.i5_b, self.i6_b, self.i7_b, self.i8_b, self.i9_b = self.netG_A(self.real_A)  # G_A(A)
 
-        print(self.fake_B.detach().cpu().numpy().shape)
-
         self.rec_A, _, _, _, _, _, _, _, _, _, _, \
         _, _, _, _, _, _, _, _, _, _, \
         _, _, _, _, _, _, _, _, _ = self.netG_B(self.fake_B)   # G_B(G_A(A))

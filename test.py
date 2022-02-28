@@ -32,17 +32,12 @@ from data import create_dataset
 from models import create_model
 from util.visualizer import save_images
 from util import html
-from datasets.convertResults import save_results_as_audio_and_spec
 import ntpath
 from PIL import Image
 from util.util import denorm_and_numpy, getTimeSeries
 import soundfile as sf
 import numpy as np
 
-try:
-    import wandb
-except ImportError:
-    print('Warning: wandb package cannot be found. The option "--use_wandb" will result in error.')
 
 
 def save_audio(opt, visuals_list, img_path):

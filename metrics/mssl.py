@@ -19,7 +19,7 @@ CSV_PATH can be ignored if separate scores for male and female are not required 
 
 """
 
-RESULTS_DEFAULT = '/content/AttentionGAN-VC/results/npisy_attention/test_latest/audios/fake_B'
+RESULTS_DEFAULT = '/content/AttentionGAN-VC/results/noisy_attention/test_latest/audios/fake_B'
 SOURCE_DEFAULT = '/content/AttentionGAN-VC/data_cache/noisy/test' 
 CSV_PATH_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/annotations.csv'
 USE_GENDER = True

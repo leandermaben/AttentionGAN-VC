@@ -160,8 +160,7 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
         net = UnetGenerator(input_nc, output_nc, 8, ngf, norm_layer=norm_layer, use_dropout=use_dropout)
     elif netG == 'our':
         if use_mask:
-            input_nc+=1
-            net = ResnetGenerator_mask(input_nc, output_nc, ngf, n_blocks=9)
+            net = ResnetGenerator_mask(input_nc+1, output_nc, ngf, n_blocks=9)
         else:
             net = ResnetGenerator_our(input_nc, output_nc, ngf, n_blocks=9)
 
@@ -588,7 +587,7 @@ class ResnetGenerator_mask(nn.Module):
     def forward(self, input, mask):
         x = input*mask
         x = torch.cat([x,mask],dim=1)
-        x = F.pad(input, (3, 3, 3, 3), 'reflect') # Check Padding Mode Later
+        x = F.pad(x, (3, 3, 3, 3), 'reflect') # Check Padding Mode Later
         x = F.relu(self.conv1_norm(self.conv1(x)))
         x = F.relu(self.conv2_norm(self.conv2(x)))
         x = F.relu(self.conv3_norm(self.conv3(x)))

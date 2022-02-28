@@ -95,13 +95,13 @@ class AttentionGANModel(BaseModel):
 
             self.rec_A, _, _, _, _, _, _, _, _, _, _, \
             _, _, _, _, _, _, _, _, _, _, \
-            _, _, _, _, _, _, _, _, _ = self.netG_B(self.fake_B, cycle = True)   # G_B(G_A(A))
+            _, _, _, _, _, _, _, _, _ = self.netG_B(self.fake_B)   # G_B(G_A(A))
             self.fake_A, self.o1_a, self.o2_a, self.o3_a, self.o4_a, self.o5_a, self.o6_a, self.o7_a, self.o8_a, self.o9_a, self.o10_a, \
             self.a1_a, self.a2_a, self.a3_a, self.a4_a, self.a5_a, self.a6_a, self.a7_a, self.a8_a, self.a9_a, self.a10_a, \
             self.i1_a, self.i2_a, self.i3_a, self.i4_a, self.i5_a, self.i6_a, self.i7_a, self.i8_a, self.i9_a = self.netG_B(self.real_B)  # G_B(B)
             self.rec_B, _, _, _, _, _, _, _, _, _, _, \
             _, _, _, _, _, _, _, _, _, _, \
-            _, _, _, _, _, _, _, _, _ = self.netG_A(self.fake_A , cycle = True)   # G_A(G_B(B))
+            _, _, _, _, _, _, _, _, _ = self.netG_A(self.fake_A)   # G_A(G_B(B))
         else:
             self.fake_B, self.o1_b, self.o2_b, self.o3_b, self.o4_b, self.o5_b, self.o6_b, self.o7_b, self.o8_b, self.o9_b, self.o10_b, \
             self.a1_b, self.a2_b, self.a3_b, self.a4_b, self.a5_b, self.a6_b, self.a7_b, self.a8_b, self.a9_b, self.a10_b, \

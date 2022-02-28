@@ -111,6 +111,9 @@ class AudioDataset(BaseDataset):
         self.data_load_order = opt.data_load_order
         #self.max_mask_len = opt.max_mask_len
 
+        if self.opt.use_mask:
+            print('########## Using Mask ##########')
+
         if("passcodec" in opt.preprocess):
             print("------Passing samples through g726 Codec using FFmpeg------")
             for path in self.A_paths:
@@ -158,16 +161,16 @@ class AudioDataset(BaseDataset):
         assert self.noisy_specs_len == len(self.noisy_spec_paths)
         del self.no_comps_noisy
 
-    # def get_mask(self,A):
-    #     if self.phase == 'train':
-    #         mask_size = np.random.randint(0,self.max_mask_len)
-    #         start = np.random.randint(0,A.size(0)-mask_size)
-    #         end = start+mask_size
-    #         mask = torch.ones_like(A)
-    #         mask[:,start:end] = 0
-    #     else:
-    #         mask = torch.ones_like(A)
-    #     return mask
+    def get_mask(self,A):
+        if self.opt.phase == 'train':
+            mask_size = np.random.randint(0,self.opt.max_mask_len)
+            start = np.random.randint(0,A.size(0)-mask_size)
+            end = start+mask_size
+            mask = torch.ones_like(A)
+            mask[:,start:end] = 0
+        else:
+            mask = torch.ones_like(A)
+        return mask
 
 
     def __getitem__(self,index):
@@ -179,7 +182,6 @@ class AudioDataset(BaseDataset):
         transform_params_A = get_params(self.opt, A_img.size)
         A_transform = get_transform(self.opt, transform_params_A, grayscale= True)
         A = A_transform(A_img)
-        # A_mask = self.get_mask(A)
 
         if self.data_load_order == 'aligned':   # make sure index is within then range
             index_B = index % self.noisy_specs_len
@@ -190,12 +192,22 @@ class AudioDataset(BaseDataset):
         transform_params_B = get_params(self.opt, B_img.size)
         B_transform = get_transform(self.opt, transform_params_B, grayscale= True)
         B = B_transform(B_img)
-        # B_mask = self.get_mask(B)
 
         if (self.phase).lower() == 'train':
-            return {'A': A, 'B': B, 'A_paths': A_path, 'B_paths': B_path}
+            if self.opt.use_mask:
+                A_mask = self.get_mask(A)
+                B_mask = self.get_mask(B)
+                return {'A': A, 'B': B, 'A_mask':A_mask, 'B_mask':B_mask, 'A_paths': A_path, 'B_paths': B_path}
+            else:
+                return {'A': A, 'B': B, 'A_paths': A_path, 'B_paths': B_path}
+
         else:
-            return {'A': A, 'B': B, 'A_paths': A_path, 'B_paths': B_path, 'A_comps': self.clean_comp_dict[A_path]}
+            if self.opt.use_mask:
+                A_mask = self.get_mask(A)
+                B_mask = self.get_mask(B)
+                return {'A': A, 'B': B, 'A_mask':A_mask, 'B_mask':B_mask, 'A_paths': A_path, 'B_paths': B_path, 'A_comps': self.clean_comp_dict[A_path]}
+            else:
+                return {'A': A, 'B': B, 'A_paths': A_path, 'B_paths': B_path, 'A_comps': self.clean_comp_dict[A_path]}
 
 
     def __len__(self):

@@ -41,13 +41,15 @@ class AttentionGANModel(BaseModel):
         else:  # during test time, only load Gs
             self.model_names = ['G_A', 'G_B']
 
+        self.opt = opt
+
         # define networks (both Generators and discriminators)
         # The naming is different from those used in the paper.
         # Code (vs. paper): G_A (G), G_B (F), D_A (D_Y), D_B (D_X)
         self.netG_A = networks.define_G(opt.input_nc, opt.output_nc, opt.ngf, 'our', opt.norm,
-                                        not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids)
+                                        not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids, use_mask = opt.use_mask)
         self.netG_B = networks.define_G(opt.output_nc, opt.input_nc, opt.ngf, 'our', opt.norm,
-                                        not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids)
+                                        not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids, use_mask = opt.use_mask)
 
         if self.isTrain:  # define discriminators
             self.netD_A = networks.define_D(opt.output_nc, opt.ndf, opt.netD,
@@ -80,22 +82,40 @@ class AttentionGANModel(BaseModel):
         self.real_A = input['A' if AtoB else 'B'].to(self.device)
         self.real_B = input['B' if AtoB else 'A'].to(self.device)
         self.image_paths = input['A_paths' if AtoB else 'B_paths']
+        if self.opt.use_mask:
+            self.A_mask = input['A_mask' if AtoB else 'B_mask'].to(self.device)
+            self.B_mask = input['B_mask' if AtoB else 'A_mask'].to(self.device)
 
     def forward(self):
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
-        self.fake_B, self.o1_b, self.o2_b, self.o3_b, self.o4_b, self.o5_b, self.o6_b, self.o7_b, self.o8_b, self.o9_b, self.o10_b, \
-        self.a1_b, self.a2_b, self.a3_b, self.a4_b, self.a5_b, self.a6_b, self.a7_b, self.a8_b, self.a9_b, self.a10_b, \
-        self.i1_b, self.i2_b, self.i3_b, self.i4_b, self.i5_b, self.i6_b, self.i7_b, self.i8_b, self.i9_b = self.netG_A(self.real_A)  # G_A(A)
+        if not self.opt_mask:
+            self.fake_B, self.o1_b, self.o2_b, self.o3_b, self.o4_b, self.o5_b, self.o6_b, self.o7_b, self.o8_b, self.o9_b, self.o10_b, \
+            self.a1_b, self.a2_b, self.a3_b, self.a4_b, self.a5_b, self.a6_b, self.a7_b, self.a8_b, self.a9_b, self.a10_b, \
+            self.i1_b, self.i2_b, self.i3_b, self.i4_b, self.i5_b, self.i6_b, self.i7_b, self.i8_b, self.i9_b = self.netG_A(self.real_A)  # G_A(A)
 
-        self.rec_A, _, _, _, _, _, _, _, _, _, _, \
-        _, _, _, _, _, _, _, _, _, _, \
-        _, _, _, _, _, _, _, _, _ = self.netG_B(self.fake_B)   # G_B(G_A(A))
-        self.fake_A, self.o1_a, self.o2_a, self.o3_a, self.o4_a, self.o5_a, self.o6_a, self.o7_a, self.o8_a, self.o9_a, self.o10_a, \
-        self.a1_a, self.a2_a, self.a3_a, self.a4_a, self.a5_a, self.a6_a, self.a7_a, self.a8_a, self.a9_a, self.a10_a, \
-        self.i1_a, self.i2_a, self.i3_a, self.i4_a, self.i5_a, self.i6_a, self.i7_a, self.i8_a, self.i9_a = self.netG_B(self.real_B)  # G_B(B)
-        self.rec_B, _, _, _, _, _, _, _, _, _, _, \
-        _, _, _, _, _, _, _, _, _, _, \
-        _, _, _, _, _, _, _, _, _ = self.netG_A(self.fake_A)   # G_A(G_B(B))
+            self.rec_A, _, _, _, _, _, _, _, _, _, _, \
+            _, _, _, _, _, _, _, _, _, _, \
+            _, _, _, _, _, _, _, _, _ = self.netG_B(self.fake_B, cycle = True)   # G_B(G_A(A))
+            self.fake_A, self.o1_a, self.o2_a, self.o3_a, self.o4_a, self.o5_a, self.o6_a, self.o7_a, self.o8_a, self.o9_a, self.o10_a, \
+            self.a1_a, self.a2_a, self.a3_a, self.a4_a, self.a5_a, self.a6_a, self.a7_a, self.a8_a, self.a9_a, self.a10_a, \
+            self.i1_a, self.i2_a, self.i3_a, self.i4_a, self.i5_a, self.i6_a, self.i7_a, self.i8_a, self.i9_a = self.netG_B(self.real_B)  # G_B(B)
+            self.rec_B, _, _, _, _, _, _, _, _, _, _, \
+            _, _, _, _, _, _, _, _, _, _, \
+            _, _, _, _, _, _, _, _, _ = self.netG_A(self.fake_A , cycle = True)   # G_A(G_B(B))
+        else:
+            self.fake_B, self.o1_b, self.o2_b, self.o3_b, self.o4_b, self.o5_b, self.o6_b, self.o7_b, self.o8_b, self.o9_b, self.o10_b, \
+            self.a1_b, self.a2_b, self.a3_b, self.a4_b, self.a5_b, self.a6_b, self.a7_b, self.a8_b, self.a9_b, self.a10_b, \
+            self.i1_b, self.i2_b, self.i3_b, self.i4_b, self.i5_b, self.i6_b, self.i7_b, self.i8_b, self.i9_b = self.netG_A(self.real_A, self.A_mask)  # G_A(A)
+
+            self.rec_A, _, _, _, _, _, _, _, _, _, _, \
+            _, _, _, _, _, _, _, _, _, _, \
+            _, _, _, _, _, _, _, _, _ = self.netG_B(self.fake_B, torch.ones_like(self.fakeB))   # G_B(G_A(A))
+            self.fake_A, self.o1_a, self.o2_a, self.o3_a, self.o4_a, self.o5_a, self.o6_a, self.o7_a, self.o8_a, self.o9_a, self.o10_a, \
+            self.a1_a, self.a2_a, self.a3_a, self.a4_a, self.a5_a, self.a6_a, self.a7_a, self.a8_a, self.a9_a, self.a10_a, \
+            self.i1_a, self.i2_a, self.i3_a, self.i4_a, self.i5_a, self.i6_a, self.i7_a, self.i8_a, self.i9_a = self.netG_B(self.real_B, self.B_mask)  # G_B(B)
+            self.rec_B, _, _, _, _, _, _, _, _, _, _, \
+            _, _, _, _, _, _, _, _, _, _, \
+            _, _, _, _, _, _, _, _, _ = self.netG_A(self.fake_A , torch.ones_like(self.fakeA))   # G_A(G_B(B))
 
     def backward_D_basic(self, netD, real, fake):
         """Calculate GAN loss for the discriminator

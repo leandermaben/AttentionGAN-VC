@@ -164,10 +164,10 @@ class AudioDataset(BaseDataset):
     def get_mask(self,A):
         if self.opt.phase == 'train':
             mask_size = np.random.randint(0,self.opt.max_mask_len)
-            start = np.random.randint(0,A.size(0)-mask_size)
+            start = np.random.randint(0,A.size(1)-mask_size)
             end = start+mask_size
             mask = torch.ones_like(A)
-            mask[:,start:end] = 0
+            mask[:,:,start:end] = 0
         else:
             mask = torch.ones_like(A)
         return mask

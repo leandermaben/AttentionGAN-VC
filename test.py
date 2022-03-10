@@ -40,10 +40,12 @@ import numpy as np
 
 
 
-def save_audio(opt, visuals_list, img_path):
+def save_audio(opt, visuals_list, img_path, use_phase=False):
 
     """
     Borrowed from https://github.com/shashankshirol/GeneratingNoisySpeechData
+
+    Modified by: Leander Maben.
     """
 
     results_dir = os.path.join(opt.results_dir, opt.name, '{}_{}'.format(opt.phase, opt.epoch))
@@ -66,17 +68,34 @@ def save_audio(opt, visuals_list, img_path):
         #Resizing the output to 129x128 size (original splits)
         if(im.shape[-1] == 1): #to drop last channel
             im = im[:,:,0]
-        im = Image.fromarray(im)
-        im = im.resize((128, 129), Image.LANCZOS)
-        im = np.asarray(im).astype(np.float)
-
-        if(flag_first):
-            spec = im
-            flag_first = False
+        if use_phase:
+            im_mag = Image.fromarray(im[:,:,0])
+            im_phase = Image.fromarray(im[:,:,1])
+            im_mag = im_mag.resize((128, 129), Image.LANCZOS)
+            im_phase = im_phase.resize((128, 129), Image.LANCZOS)
+            im_mag = np.asarray(im_mag).astype(np.float)
+            im_phase = np.asarray(im_phase).astype(np.float)
+            if(flag_first):
+                mag_spec = im_mag
+                phase_spec = im_phase
+                flag_first = False
+            else:
+                mag_spec = np.concatenate((mag_spec, im_mag), axis=1) #concatenating specs to obtain original.
+                phase_spec = np.concatenate((phase_spec, im_phase), axis=1) #concatenating specs to obtain original.
         else:
-            spec = np.concatenate((spec, im), axis=1) #concatenating specs to obtain original.
+            im = Image.fromarray(im)
+            im = im.resize((128, 129), Image.LANCZOS)
+            im = np.asarray(im).astype(np.float)
 
-    data, sr = getTimeSeries(spec, img_path, opt.spec_power, opt.energy, state = opt.phase)
+            if(flag_first):
+                mag_spec = im
+                phase_spec=None
+                flag_first = False
+            else:
+                mag_spec = np.concatenate((mag_spec, im), axis=1) #concatenating specs to obtain original.
+
+
+    data, sr = getTimeSeries(mag_spec, phase_spec, img_path, opt.spec_power, opt.energy, state = opt.phase, use_phase=use_phase)
     sf.write(save_path, data, sr)
 
     return
@@ -134,6 +153,6 @@ if __name__ == '__main__':
             comps_processed += 1
 
         print("saving: ", img_path[0])
-        save_audio(opt, visuals_list, img_path)
+        save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase)
         idx += 1
         

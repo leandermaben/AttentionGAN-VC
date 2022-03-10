@@ -152,7 +152,12 @@ def denorm_and_numpy(inp_tensor):
     inp_tensor = inp_tensor.cpu().numpy().astype(np.uint8) #generating Numpy ndarray
     return inp_tensor
 
-def getTimeSeries(im, img_path, pow, energy = 1.0, state = None):
+def getTimeSeries(im_mag, im_phase, img_path, pow, energy = 1.0, state = None, use_phase=False):
+
+    """
+    Modified by Leander Maben.
+    """
+
     mag_spec, phase, sr = extract(img_path[0], 8000, energy, state = state)
     log_spec = power_to_db(mag_spec)
 
@@ -164,22 +169,30 @@ def getTimeSeries(im, img_path, pow, energy = 1.0, state = None):
     extra_cols = 0
     if(mod_fix_w != 0):
         extra_cols = fix_w - mod_fix_w
-        im = im[:, :-extra_cols]
+        im_mag = im_mag[:, :-extra_cols]
+        if use_phase:
+            im_phase = im_phase[:, :-extra_cols]
     #########################
-    print("im shape (ex. padding) = ", im.shape)
+    print("im shape (ex. padding) = ", im_mag.shape)
     print("spec shape (original) = ", mag_spec.shape)
 
-    _min, _max = log_spec.min(), log_spec.max()
+    _min_mag, _max_mag = log_spec.min(), log_spec.max()
+    _min_phase, _max_phase = phase.min(), phase.max()
 
-    if(len(im.shape) > 2):
-        im = np.mean(im, axis=2)
-    im = np.flip(im, axis=0)
+    # if(len(im.shape) > 2):
+    #     im = np.mean(im, axis=2)
 
-    im = unscale_minmax(im, float(_min), float(_max), 0, 255)
-    spec = db_to_power(im)
-    spec = np.power(spec, 1. / pow)
+    im_mag = np.flip(im_mag, axis=0)
+    im_mag = unscale_minmax(im_mag, float(_min_mag), float(_max_mag), 0, 255)
 
-    return reconstruct(spec, phase)/energy, sr
+    if use_phase:
+        im_phase = np.flip(im_phase, axis=0)
+        im_phase = unscale_minmax(im_phase, float(_min_phase), float(_max_phase), 0, 255)
+        
+    res_mag = db_to_power(im_mag)
+    res_mag = np.power(res_mag, 1. / pow)
+
+    return reconstruct(res_mag, im_phase)/energy, sr
 
 def reconstruct(mag_spec, phase):
     """

@@ -18,17 +18,21 @@ import numpy as np
 Heavily borrows from https://github.com/shashankshirol/GeneratingNoisySpeechData
 """
 
-def split_and_save(spec, pow=1.0, state = "Train", channels = 1):
+def split_and_save(mag_spec, phase_spec, pow=1.0, state = "Train", channels = 1, use_phase=False):
     """
         Info: Takes a spectrogram, splits it into equal parts; uses median padding to achieve this.
         Parameters:
-            spec - Magnitude Spectrogram
-            pow - value to raise the spectrogram by
-            phase - Decides how the components are returned
+            mag_spec - Magnitude Spectrogram
+            phase_spec - Phase Spectrogram
+            pow - value to raise the magnitude spectrogram by
+            state - Decides how the components are returned
+            use_phase - Decides if phase spectrograms should be returned
+
+        Modified by: Leander Maben
     """
 
     fix_w = 128  # because we have 129 n_fft bins; this will result in 129x128 spec components
-    orig_shape = spec.shape
+    orig_shape = mag_spec.shape # mag_spec and phase_spec have same dimensions
 
     #### adding the padding to get equal splits
     w = orig_shape[1]
@@ -39,24 +43,38 @@ def split_and_save(spec, pow=1.0, state = "Train", channels = 1):
         
     #making padding by repeating same audio (takes care of edge case where actual data < padding columns to be added)
     num_wraps = math.ceil(extra_cols/w)
-    temp_roll = np.tile(spec, num_wraps)
-    padd=temp_roll[:,:extra_cols]
-    spec = np.concatenate((spec, padd), axis=1)
+    temp_roll_mag = np.tile(mag_spec, num_wraps)
+    padd_mag=temp_roll_mag[:,:extra_cols]
+    mag_spec = np.concatenate((mag_spec, padd_mag), axis=1)
+
+    temp_roll_phase = np.tile(phase_spec, num_wraps)
+    padd_phase=temp_roll_phase[:,:extra_cols]
+    phase_spec = np.concatenate((phase_spec, padd_phase), axis=1)
     ####
 
     spec_components = []
 
-    spec = util.power_to_db(spec**pow)
-    X, X_min, X_max = util.scale_minmax(spec, 0, 255)
-    X = np.flip(X, axis=0)
-    np_img = X.astype(np.uint8)
+    mag_spec = util.power_to_db(mag_spec**pow)
+
+    X_mag, _, _ = util.scale_minmax(mag_spec, 0, 255)
+    X_phase, _, _ = util.scale_minmax(phase_spec, 0, 255)
+    X_mag = np.flip(X_mag, axis=0)
+    X_phase = np.flip(X_phase, axis=0)
+    np_img_mag = X_mag.astype(np.uint8)
+    np_img_phase = X_phase.astype(np.uint8)
 
     curr = [0]
     while(curr[-1] < w):
-        temp_spec = np_img[:, curr[-1]:curr[-1] + fix_w]
-        rgb_im = util.to_rgb(temp_spec, chann = channels)
-        img = Image.fromarray(rgb_im)
-        spec_components.append(img)
+        temp_spec_mag = np_img_mag[:, curr[-1]:curr[-1] + fix_w]
+        temp_spec_phase = np_img_phase[:, curr[-1]:curr[-1] + fix_w]
+        #rgb_im = util.to_rgb(temp_spec, chann = channels)
+        mag_img = Image.fromarray(temp_spec_mag)
+        phase_img = Image.fromarray(temp_spec_phase)
+        if use_phase:
+            spec_components.append([mag_img,phase_img])
+        else:
+            spec_components.append(mag_img)
+
         curr.append(curr[-1] + fix_w)
 
     if(state == "Train"):
@@ -65,9 +83,9 @@ def split_and_save(spec, pow=1.0, state = "Train", channels = 1):
         return spec_components  # If in "Test" state, we need all the components
 
 
-def processInput(filepath, power, state, channels):
+def processInput(filepath, power, state, channels, use_phase):
     mag_spec, phase, sr = util.extract(filepath, sr=8000, energy=1.0, state = state)
-    components = split_and_save(mag_spec, pow=power, state = state, channels = channels)
+    components = split_and_save(mag_spec, phase, pow=power, state = state, channels = channels, use_phase=use_phase)
 
     return components
 
@@ -128,7 +146,7 @@ class AudioDataset(BaseDataset):
                     os.system('rm ' + path[:-4] + '_8k.wav')
 
         #Compute the spectrogram components parallelly to make it more efficient; uses Joblib, maintains order of input data passed.
-        self.clean_specs = Parallel(n_jobs=self.num_cores, prefer="threads")(delayed(processInput)(i, self.spec_power, self.phase, self.channels) for i in self.A_paths)
+        self.clean_specs = Parallel(n_jobs=self.num_cores, prefer="threads")(delayed(processInput)(i, self.spec_power, self.phase, self.channels, self.opt.use_phase) for i in self.A_paths)
         #self.clean_specs = [processInput(i, self.spec_power, self.phase, self.channels) for i in self.A_paths]
 
         #calculate no. of components in each sample
@@ -148,7 +166,7 @@ class AudioDataset(BaseDataset):
 
         del self.no_comps_clean
 
-        self.noisy_specs = Parallel(n_jobs=self.num_cores, prefer="threads")(delayed(processInput)(i, self.spec_power, self.phase, self.channels) for i in self.B_paths)
+        self.noisy_specs = Parallel(n_jobs=self.num_cores, prefer="threads")(delayed(processInput)(i, self.spec_power, self.phase, self.channels, self.opt.use_phase) for i in self.B_paths)
         self.no_comps_noisy = Parallel(n_jobs=self.num_cores, prefer="threads")(delayed(countComps)(i) for i in self.noisy_specs)
 
         self.noisy_spec_paths = []
@@ -178,10 +196,14 @@ class AudioDataset(BaseDataset):
         index_A = index % self.clean_specs_len
         A_path = self.clean_spec_paths[index_A]  # make sure index is within then range
         A_img = self.clean_specs[index_A]
-
-        transform_params_A = get_params(self.opt, A_img.size)
-        A_transform = get_transform(self.opt, transform_params_A, grayscale= True)
-        A = A_transform(A_img)
+        if self.opt.use_phase:
+            transform_params_A = get_params(self.opt, A_img[0].size)
+            A_transform = get_transform(self.opt, transform_params_A, grayscale= True)
+            A = torch.cat([A_transform(A_img[0]),A_transform(A_img[1])], dim=0) # Appending magnitude and phase components along the channel dimension
+        else:
+            transform_params_A = get_params(self.opt, A_img.size)
+            A_transform = get_transform(self.opt, transform_params_A, grayscale= True)
+            A = A_transform(A_img)
 
         if self.data_load_order == 'aligned':   # make sure index is within then range
             index_B = index % self.noisy_specs_len
@@ -189,9 +211,14 @@ class AudioDataset(BaseDataset):
             index_B = random.randint(0, self.noisy_specs_len - 1)
         B_path = self.noisy_spec_paths[index_B]
         B_img = self.noisy_specs[index_B]
-        transform_params_B = get_params(self.opt, B_img.size)
-        B_transform = get_transform(self.opt, transform_params_B, grayscale= True)
-        B = B_transform(B_img)
+        if self.opt.use_phase:
+            transform_params_B = get_params(self.opt, B_img[0].size)
+            B_transform = get_transform(self.opt, transform_params_B, grayscale= True)
+            B = torch.cat([B_transform(B_img[0]),B_transform(B_img[1])], dim=0) # Appending magnitude and phase components along the channel dimension
+        else:
+            transform_params_B = get_params(self.opt, B_img.size)
+            B_transform = get_transform(self.opt, transform_params_B, grayscale= True)
+            B = B_transform(B_img)
 
         if (self.phase).lower() == 'train':
             if self.opt.use_mask:

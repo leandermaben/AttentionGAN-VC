@@ -51,7 +51,8 @@ class BaseOptions():
         parser.add_argument('--display_winsize', type=int, default=256, help='display window size for both visdom and HTML')
         parser.add_argument('--data_load_order', type=str, default='unaligned', choices=['aligned','unaligned'], help='Method to load spectrograms from different domains.')
         parser.add_argument('--use_mask', action='store_true', help='Mask inputs when training.')
-        parser.add_argument('-max_mask_len', type=int, default=25, help = "Max length of mask if --use_mask option is used.")
+        parser.add_argument('--max_mask_len', type=int, default=25, help = "Max length of mask if --use_mask option is used.")
+        parser.add_argument('--use_phase', action='store_true', help='Use phase spectogram in model.')
         
         # additional parameters
         parser.add_argument('--epoch', type=str, default='latest', help='which epoch to load? set to latest to use latest cached model')

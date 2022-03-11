@@ -192,7 +192,7 @@ def getTimeSeries(im_mag, im_phase, img_path, pow, energy = 1.0, state = None, u
     res_mag = db_to_power(im_mag)
     res_mag = np.power(res_mag, 1. / pow)
 
-    return reconstruct(res_mag, im_phase)/energy, sr
+    return reconstruct(res_mag, im_phase)/energy if use_phase else reconstruct(res_mag, phase)/energy, sr
 
 def reconstruct(mag_spec, phase):
     """

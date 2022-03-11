@@ -14,7 +14,7 @@ import shutil
 import pandas as pd
 #from timeit import default_timer as timer
 
-RESULTS_DEFAULT = '/content/AttentionGAN-VC/results/noisy_attention/test_latest/audios/fake_B'
+RESULTS_DEFAULT = '/content/AttentionGAN-VC/results/attention_noisy/test_latest/audios/fake_B'
 SOURCE_DEFAULT = '/content/AttentionGAN-VC/data_cache/noisy/test' 
 CSV_PATH_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/annotations.csv'
 USE_GENDER =True

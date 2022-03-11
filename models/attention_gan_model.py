@@ -19,7 +19,8 @@ class AttentionGANModel(BaseModel):
     def __init__(self, opt):
         BaseModel.__init__(self, opt)
         # specify the training losses you want to print out. The training/test scripts will call <BaseModel.get_current_losses>
-        self.loss_names = ['D_A', 'D2_A', 'G_A', 'G2_A', 'cycle_A', 'idt_A', 'D_B', 'D2_B', 'G_B', 'G2B', 'cycle_B', 'idt_B' ] if opt.use_cycled_discriminators else ['D_A', 'G_A', 'cycle_A', 'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B']
+        if self.isTrain:
+            self.loss_names = ['D_A', 'D2_A', 'G_A', 'G2_A', 'cycle_A', 'idt_A', 'D_B', 'D2_B', 'G_B', 'G2_B', 'cycle_B', 'idt_B' ] if opt.use_cycled_discriminators else ['D_A', 'G_A', 'cycle_A', 'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B']
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
         visual_names_A = ['real_A', 'fake_B', 'rec_A', 'o1_b', 'o2_b', 'o3_b', 'o4_b', 'o5_b', 'o6_b', 'o7_b', 'o8_b', 'o9_b', 'o10_b',
         'a1_b', 'a2_b', 'a3_b', 'a4_b', 'a5_b', 'a6_b', 'a7_b', 'a8_b', 'a9_b', 'a10_b', 'i1_b', 'i2_b', 'i3_b', 'i4_b', 'i5_b', 
@@ -233,7 +234,7 @@ class AttentionGANModel(BaseModel):
         self.optimizer_D.zero_grad()   # set D_A and D_B's gradients to zero
         self.backward_D_A()      # calculate gradients for D_A
         self.backward_D_B()      # calculate graidents for D_B
-        if seldf.opt.use_cycled_discriminators:
+        if self.opt.use_cycled_discriminators:
             self.backward_D2_A()      # calculate gradients for D2_A
             self.backward_D2_B()      # calculate graidents for D2_B
         self.optimizer_D.step()  # update D_A and D_B's weights

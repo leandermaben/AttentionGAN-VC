@@ -36,17 +36,17 @@ def vary_data(train_percents, test_percent, names, csv_path, use_cycled_discrimi
     bool_args_test = ''
 
     if use_cycled_discriminators:
-        bool_args_train+= '--use_cycled_discriminators'
+        bool_args_train+= ' --use_cycled_discriminators'
 
     if use_phase:
-        bool_args_train+= '--use_phase'
-        bool_args_test+= '--use_phase'
+        bool_args_train+= ' --use_phase'
+        bool_args_test+= ' --use_phase'
         input_nc = 2
         output_nc = 2
 
     if use_mask:
-        bool_args_train+= '--use_mask'
-        bool_args_test+= '--use_mask'
+        bool_args_train+= ' --use_mask'
+        bool_args_test+= ' --use_mask'
 
     for train_p, name in zip(train_percents,names):
         print('#'*25)

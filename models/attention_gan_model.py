@@ -19,7 +19,7 @@ class AttentionGANModel(BaseModel):
     def __init__(self, opt):
         BaseModel.__init__(self, opt)
         # specify the training losses you want to print out. The training/test scripts will call <BaseModel.get_current_losses>
-        self.loss_names = ['D_A', 'G_A', 'cycle_A', 'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B']
+        self.loss_names = ['D_A', 'D2_A', 'G_A', 'G2_A', 'cycle_A', 'idt_A', 'D_B', 'D2_B', 'G_B', 'G2B', 'cycle_B', 'idt_B' ] if opt.use_cycled_discriminators else ['D_A', 'G_A', 'cycle_A', 'idt_A', 'D_B', 'G_B', 'cycle_B', 'idt_B']
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
         visual_names_A = ['real_A', 'fake_B', 'rec_A', 'o1_b', 'o2_b', 'o3_b', 'o4_b', 'o5_b', 'o6_b', 'o7_b', 'o8_b', 'o9_b', 'o10_b',
         'a1_b', 'a2_b', 'a3_b', 'a4_b', 'a5_b', 'a6_b', 'a7_b', 'a8_b', 'a9_b', 'a10_b', 'i1_b', 'i2_b', 'i3_b', 'i4_b', 'i5_b', 
@@ -37,7 +37,7 @@ class AttentionGANModel(BaseModel):
             self.visual_names = visual_names_A + visual_names_B  # combine visualizations for A and B
         # specify the models you want to save to the disk. The training/test scripts will call <BaseModel.save_networks> and <BaseModel.load_networks>.
         if self.isTrain:
-            self.model_names = ['G_A', 'G_B', 'D_A', 'D_B']
+            self.model_names = ['G_A', 'G_B', 'D_A', 'D_B', 'D2_A', 'D2_B'] if opt.use_cycled_discriminators else ['G_A', 'G_B', 'D_A', 'D_B']
         else:  # during test time, only load Gs
             self.model_names = ['G_A', 'G_B']
 
@@ -56,19 +56,28 @@ class AttentionGANModel(BaseModel):
                                             opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
             self.netD_B = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
                                             opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+            if opt.use_cycled_discriminators:
+                self.netD2_A = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
+                                                opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+                self.netD2_B = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
+                                                opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
 
         if self.isTrain:
             if opt.lambda_identity > 0.0:  # only works when input and output images have the same number of channels
                 assert(opt.input_nc == opt.output_nc)
             self.fake_A_pool = ImagePool(opt.pool_size)  # create image buffer to store previously generated images
             self.fake_B_pool = ImagePool(opt.pool_size)  # create image buffer to store previously generated images
+            if opt.use_cycled_discriminators:
+                self.rec_A_pool = ImagePool(opt.pool_size)  # create image buffer to store previously generated images
+                self.rec_B_pool = ImagePool(opt.pool_size)  # create image buffer to store previously generated images
             # define loss functions
             self.criterionGAN = networks.GANLoss(opt.gan_mode).to(self.device)  # define GAN loss.
             self.criterionCycle = torch.nn.L1Loss()
             self.criterionIdt = torch.nn.L1Loss()
             # initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.
             self.optimizer_G = torch.optim.Adam(itertools.chain(self.netG_A.parameters(), self.netG_B.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999))
-            self.optimizer_D = torch.optim.Adam(itertools.chain(self.netD_A.parameters(), self.netD_B.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999))
+            disc_parameters = itertools.chain(self.netD_A.parameters(), self.netD_B.parameters(), self.netD2_A.parameters(), self.netD2_B.parameters()) if opt.use_cycled_discriminators else itertools.chain(self.netD_A.parameters(), self.netD_B.parameters())
+            self.optimizer_D = torch.optim.Adam(disc_parameters, lr=opt.lr, betas=(opt.beta1, 0.999))
             self.optimizers.append(self.optimizer_G)
             self.optimizers.append(self.optimizer_D)
 
@@ -146,6 +155,16 @@ class AttentionGANModel(BaseModel):
         """Calculate GAN loss for discriminator D_B"""
         fake_A = self.fake_A_pool.query(self.fake_A)
         self.loss_D_B = self.backward_D_basic(self.netD_B, self.real_A, fake_A)
+    
+    def backward_D2_A(self):
+        """Calculate GAN loss for discriminator D2_A"""
+        rec_A = self.rec_A_pool.query(self.rec_A)
+        self.loss_D2_A = self.backward_D_basic(self.netD2_A, self.real_A, rec_A)
+
+    def backward_D2_B(self):
+        """Calculate GAN loss for discriminator D2_B"""
+        rec_B = self.rec_B_pool.query(self.rec_B)
+        self.loss_D2_B = self.backward_D_basic(self.netD2_B, self.real_B, rec_B)
 
     def backward_G(self):
         """Calculate the loss for generators G_A and G_B"""
@@ -183,12 +202,21 @@ class AttentionGANModel(BaseModel):
         self.loss_G_A = self.criterionGAN(self.netD_A(self.fake_B), True)
         # GAN loss D_B(G_B(B))
         self.loss_G_B = self.criterionGAN(self.netD_B(self.fake_A), True)
+        if self.opt.use_cycled_discriminators:
+            # Cycled Adversarial loss D2_A(G_B(G_A(A)))
+            self.loss_G2_A = self.criterionGAN(self.netD2_A(self.rec_A), True)
+            # Cycled Adversarial loss D2_B(G_A(G_B(B)))
+            self.loss_G2_B = self.criterionGAN(self.netD2_B(self.rec_B), True)
+        else:
+            self.loss_G2_A = 0
+            self.loss_G2_B = 0
+
         # Forward cycle loss || G_B(G_A(A)) - A||
         self.loss_cycle_A = self.criterionCycle(self.rec_A, self.real_A) * lambda_A
         # Backward cycle loss || G_A(G_B(B)) - B||
         self.loss_cycle_B = self.criterionCycle(self.rec_B, self.real_B) * lambda_B
         # combined loss and calculate gradients
-        self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B
+        self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B + self.loss_G2_A + self.loss_G2_B
         self.loss_G.backward()
 
     def optimize_parameters(self):
@@ -205,4 +233,8 @@ class AttentionGANModel(BaseModel):
         self.optimizer_D.zero_grad()   # set D_A and D_B's gradients to zero
         self.backward_D_A()      # calculate gradients for D_A
         self.backward_D_B()      # calculate graidents for D_B
+        if seldf.opt.use_cycled_discriminators:
+            self.backward_D2_A()      # calculate gradients for D2_A
+            self.backward_D2_B()      # calculate graidents for D2_B
         self.optimizer_D.step()  # update D_A and D_B's weights
+

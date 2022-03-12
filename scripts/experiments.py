@@ -52,7 +52,7 @@ def vary_data(train_percents, test_percent, names, csv_path, use_cycled_discrimi
         print('#'*25)
         print(f'Training {name} with train_percent {train_p}')
 
-        run(f'python datasets/fetchData.py --train_percent {train_p} --test_percent {test_percent}')
+        run(f'python datasets/fetchData.py --train_percent {train_p} --test_percent {test_percent} --use_genders None')
         run(f'python train.py --dataroot {data_cache} --name {name} --model attention_gan --dataset_mode audio --pool_size 50 --no_dropout --norm instance --lambda_A {lambda_cyc} --lambda_B {lambda_cyc} --lambda_identity {lambda_identity} --load_size 128 --crop_size 128 --batch_size 4 --niter {n_epochs} --niter_decay {n_epochs_decay} --gpu_ids 0 --display_id 0 --display_freq 100 --print_freq 100 --input_nc {input_nc} --output_nc {output_nc}'+bool_args_train)
         run(f'python test.py --dataroot {data_cache} --name {name} --model attention_gan --dataset_mode audio --norm instance --phase test --no_dropout --load_size 128 --crop_size 128 --batch_size 1 --gpu_ids 0 --input_nc {input_nc} --output_nc {output_nc}'+bool_args_test)
         avg_lsd,std_lsd,male_avg_lsd,male_std_lsd,female_avg_lsd,female_std_lsd = lsd(os.path.join(data_cache,'noisy','test'),os.path.join(results_dir,name,'test_latest','audios','fake_B'),use_gender=True)
@@ -117,7 +117,7 @@ def use_codecs(codecs, train_percent, test_percent, names, csv_path, n_epochs=75
 
 
 if __name__ == '__main__':
-    csv_path = '/content/drive/MyDrive/NTU - Speech Augmentation/att.csv'
+    csv_path = '/content/drive/MyDrive/NTU - Speech Augmentation/att_15Mar.csv'
     if not os.path.exists(csv_path):
         cols=['name','comment','avg_lsd','std_lsd','avg_mssl','std_mssl','male_avg_lsd','male_std_lsd','male_avg_mssl','male_std_mssl','female_avg_lsd','female_std_lsd','female_avg_mssl','female_std_mssl']
         df=pd.DataFrame(columns=cols)
@@ -125,14 +125,14 @@ if __name__ == '__main__':
     
     #log(csv_path,'Dummy', "Logging default parameters used - 200 lambda_L1, 15% test size",0,0)
 
-    train_percents =[5,10,25,50]
-    vary_data(train_percents,15,[f'pix_noisy_{i}' for i in train_percents], csv_path)
+    train_percents =[25,50]
+    vary_data(train_percents,15,[f'att_noisy_{i}' for i in train_percents], csv_path)
 
     train_percents =[5,10,25,50]
-    vary_data(train_percents,15,[f'pix_noisy_{i}' for i in train_percents], csv_path,use_mask =True)
+    vary_data(train_percents,15,[f'att_noisy_{i}' for i in train_percents], csv_path,use_mask =True)
 
     train_percents =[5,10,25,50]
-    vary_data(train_percents,15,[f'pix_noisy_{i}' for i in train_percents], csv_path,use_phase =True)
+    vary_data(train_percents,15,[f'att_noisy_{i}' for i in train_percents], csv_path,use_phase =True)
 
     # lambda_L1s = [2000]
     # vary_lambdaL1(lambda_L1s ,10,15,[f'pix_noisy_lambdL1_{i}' for i in lambda_L1s], csv_path)

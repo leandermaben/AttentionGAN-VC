@@ -297,8 +297,9 @@ def transfer_aligned_audio_raw(root_dir,class_ids,data_cache,train_percent,test_
                     female_duration+=duration
 
         print(f'{total_duration} seconds ({total_clips} clips) of Audio saved to {phase}.')
-        print(f'{male_duration} seconds ({male_clips} clips) of male Audio in {phase}.')
-        print(f'{female_duration} seconds ({female_clips} clips) of female Audio in {phase}.')
+        if use_genders!='None':
+            print(f'{male_duration} seconds ({male_clips} clips) of male Audio in {phase}.')
+            print(f'{female_duration} seconds ({female_clips} clips) of female Audio in {phase}.')
 
 def fetch_from_npy(train_path,test_path,data_cache, sr=SAMPLING_RATE):
 

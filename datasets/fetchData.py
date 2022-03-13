@@ -327,8 +327,7 @@ def fetch_from_npy(train_path,test_path,data_cache, sr=SAMPLING_RATE):
 def fetch_with_codec(clean_path,codec,data_cache,train_percent,test_percent, use_genders, annotations_path):
     """
     Transfer audio files to a convinient location for processing with train,test,validation split.
-    Important Note: The splitting of data by percent is based on file numbers and not on cummulative duration
-    of clips. Moreover, it does not take into the account the number of clips that are discarded for being less than 1 second long.
+    Generate the noisy data set from clean dataset using the specified codec.
     Arguments:
     clean_path(str) - Root directory where files of specified classes are present in subdirectories.
     codec(str) - Name of codec to be used.
@@ -394,44 +393,58 @@ def fetch_with_codec(clean_path,codec,data_cache,train_percent,test_percent, use
                 file_orig = os.path.join(data_cache,'clean',phase,file)
                 file_8k = os.path.join(data_cache,'noisy',phase,file[:-4]+'_8k.wav')
                 file_codec = os.path.join(data_cache,'noisy',phase,file[:-4]+'_fmt.wav')
-                file_temp = os.path.join(data_cache,'noisy',phase,file[:-4]+'_temp.wav')
+                file_out = os.path.join(data_cache,'noisy',phase,file)
                 run(f'ffmpeg -hide_banner -loglevel error -i {file_orig} -ar 8k -y {file_8k}')
                 run(f'ffmpeg -hide_banner -loglevel error -i {file_8k} -acodec g726 -b:a 16k {file_codec}')
-                run(f'ffmpeg -hide_banner -loglevel error -i {file_codec} -ar 8k -y {file_temp}')
+                run(f'ffmpeg -hide_banner -loglevel error -i {file_codec} -ar 8k -y {file_out}')
                 os.remove(file_8k)
                 os.remove(file_codec)
             elif codec == 'ogg':
                 file_orig = os.path.join(data_cache,'clean',phase,file)
                 file_codec = os.path.join(data_cache,'noisy',phase,file[:-4]+'_fmt.ogg')
-                file_temp = os.path.join(data_cache,'noisy',phase,file[:-4]+'_temp.wav')
+                file_out = os.path.join(data_cache,'noisy',phase,file)
                 run(f'ffmpeg -hide_banner -loglevel error -i {file_orig} -c:a libopus -b:a 4.5k -ar 8000 {file_codec}')
-                run(f'ffmpeg -hide_banner -loglevel error -i {file_codec} -ar 8000 {file_temp}')
+                run(f'ffmpeg -hide_banner -loglevel error -i {file_codec} -ar 8000 {file_out}')
                 os.remove(file_codec)
             elif codec == 'g723_1':
                 file_orig = os.path.join(data_cache,'clean',phase,file)
                 file_codec = os.path.join(data_cache,'noisy',phase,file[:-4]+'_fmt.wav')
-                file_temp = os.path.join(data_cache,'noisy',phase,file[:-4]+'_temp.wav')
+                file_out = os.path.join(data_cache,'noisy',phase,file)
                 run(f'ffmpeg -hide_banner -loglevel error -i {file_orig} -acodec g723_1 -b:a 6.3k -ar 8000 {file_codec}')
-                run(f'ffmpeg -hide_banner -loglevel error -i {file_codec} -ar 8000 {file_temp}')
+                run(f'ffmpeg -hide_banner -loglevel error -i {file_codec} -ar 8000 {file_out}')
                 os.remove(file_codec)
             elif codec == 'gsm':
                 file_orig = os.path.join(data_cache,'clean',phase,file)
                 file_codec = os.path.join(data_cache,'noisy',phase,file[:-4]+'_fmt.gsm')
-                file_temp = os.path.join(data_cache,'noisy',phase,file[:-4]+'_temp.wav')
+                file_out = os.path.join(data_cache,'noisy',phase,file)
                 run(f'ffmpeg -hide_banner -loglevel error -i {file_orig} -acodec libgsm -b:a 13k -ar 8000 {file_codec}')
-                run(f'ffmpeg -hide_banner -loglevel error -i {file_codec} -ar 8000 {file_temp}')
+                run(f'ffmpeg -hide_banner -loglevel error -i {file_codec} -ar 8000 {file_out}')
                 os.remove(file_codec)
+            elif codec == 'codec2':
+                if not os.path.exists('codec2'):
+                    ## Cloning codec2 repo and building
+                    cwd = os.getcwd()
+                    run('git clone https://github.com/drowe67/codec2.git')
+                    os.chdir('codec2')
+                    os.mkdir('build_linux')
+                    os.chdir('build_linux')
+                    run('cmake ..')
+                    run('make')
+                    os.chdir(cwd)
+                file_orig = os.path.join(data_cache,'clean',phase,file)
+                file_raw_input = os.path.join(data_cache,'noisy',phase,file[:-4]+'_in.raw')
+                file_enc = os.path.join(data_cache,'noisy',phase,file[:-4]+'_enc.bit')
+                file_raw_out = os.path.join(data_cache,'noisy',phase,file[:-4]+'_out.raw')
+                file_out = os.path.join(data_cache,'noisy',phase,file)
+                run(f'ffmpeg -i {file_orig} -f s16le -acodec pcm_s16le {file_raw_input}') #Convert to raw
+                run(f'codec2/build_linux/src/c2enc 3200 {file_raw_input} {file_enc}') # Encode
+                run(f'codec2/build_linux/src/c2dec 3200 {file_enc} {file_raw_out}') #Decode
+                run(f'ffmpeg -f s16le -ar 16k -ac 1 -i {file_raw_out} {file_out}') #Convert to wav
+                
+                os.remove(file_raw_input)
+                os.remove(file_enc)
+                os.remove(file_raw_out)
 
-            os.remove(file_orig)
-            data1, _ = librosa.load(file_temp,sr=SAMPLING_RATE)
-            data2, _ = librosa.load(os.path.join(clean_path,fileA),sr=SAMPLING_RATE)
-            data1, data2 = time_align(data1,data2,sr=SAMPLING_RATE)
-
-            sf.write(os.path.join(data_cache,'noisy',phase,file),data1,SAMPLING_RATE)
-            sf.write(os.path.join(data_cache,'clean',phase,file),data2,SAMPLING_RATE)
-            os.remove(file_temp)
-            
-            assert librosa.get_duration(filename=os.path.join(data_cache,'clean',phase,file)) == librosa.get_duration(filename=os.path.join(data_cache,'noisy',phase,file))
             duration=librosa.get_duration(filename=os.path.join(data_cache,'clean',phase,file))
             
             total_duration+=duration
@@ -446,8 +459,9 @@ def fetch_with_codec(clean_path,codec,data_cache,train_percent,test_percent, use
                     female_duration+=duration
 
         print(f'{total_duration} seconds ({total_clips} clips) of Audio saved to {phase}.')
-        print(f'{male_duration} seconds ({male_clips} clips) of male Audio in {phase}.')
-        print(f'{female_duration} seconds ({female_clips} clips) of female Audio in {phase}.')
+        if use_genders != None:
+            print(f'{male_duration} seconds ({male_clips} clips) of male Audio in {phase}.')
+            print(f'{female_duration} seconds ({female_clips} clips) of female Audio in {phase}.')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Prepare Data')
@@ -463,7 +477,7 @@ if __name__ == '__main__':
     parser.add_argument('--npy_train_source', dest='npy_train_source', type=str, default=NPY_TRAIN_DEFAULT, help='Path where npy train set is present.')
     parser.add_argument('--npy_test_source', dest='npy_test_source', type=str, default=NPY_TEST_DEFAULT, help='Path where npy test set is present.')
     parser.add_argument('--codec_clean_path', dest='codec_clean_path', type=str, default=os.path.join(AUDIO_DATA_PATH_DEFAULT,'clean'), help='Path to clean audio files. Only use if --transfer_mode is codec.')
-    parser.add_argument('--codec_name', dest='codec_name', type=str, default='g726', choices=['g726','ogg', 'g723_1','gsm'], help='Name of codec to be used. Only use if --transfer_mode is codec.')
+    parser.add_argument('--codec_name', dest='codec_name', type=str, default='codec2', choices=['g726','ogg', 'g723_1','gsm','codec2'], help='Name of codec to be used. Only use if --transfer_mode is codec.')
     args = parser.parse_args()
 
     for arg in vars(args):

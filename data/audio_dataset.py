@@ -1,8 +1,13 @@
+"""
+This module implements a custom verion of Pytorch's Dataset class.
+It is adapted to suit audio data.
+"""
+
 import torch
 import torch.utils.data as data
 import os
 from data.base_dataset import get_params, get_transform, BaseDataset
-from data.image_folder import make_dataset_audio
+from data.audio_folder import make_dataset_audio
 import multiprocessing
 import util.util as util
 from PIL import Image
@@ -13,10 +18,17 @@ from collections import OrderedDict
 import math
 from joblib import Parallel, delayed
 import numpy as np
+import json
 
 """
 Heavily borrows from https://github.com/shashankshirol/GeneratingNoisySpeechData
 """
+
+#Loading defaults
+
+with open('defaults.json','r') as f:
+    defaults = json.load(f)
+
 
 def split_and_save(mag_spec, phase_spec, pow=1.0, state = "Train", channels = 1, use_phase=False):
     """
@@ -31,7 +43,8 @@ def split_and_save(mag_spec, phase_spec, pow=1.0, state = "Train", channels = 1,
         Modified by: Leander Maben
     """
 
-    fix_w = 128  # because we have 129 n_fft bins; this will result in 129x128 spec components
+
+    fix_w = defaults['fix_w']  # because we have 129 n_fft bins; this will result in 129x128 spec components
     orig_shape = mag_spec.shape # mag_spec and phase_spec have same dimensions
 
     #### adding the padding to get equal splits
@@ -180,6 +193,7 @@ class AudioDataset(BaseDataset):
         del self.no_comps_noisy
 
     def get_mask(self,A):
+        # Generating mask (for filling in frames) if required 
         if self.opt.phase == 'train':
             mask_size = np.random.randint(0,self.opt.max_mask_len)
             start = np.random.randint(0,A.size(1)-mask_size)

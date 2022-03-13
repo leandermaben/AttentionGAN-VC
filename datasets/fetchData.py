@@ -63,7 +63,7 @@ import pickle
 import matplotlib.pyplot as plt
 from util.util import save_pickle
 import soundfile as sf
-from scipy import signal
+import json
 
 
 #Default values.Actual values can be set from command line.
@@ -76,7 +76,10 @@ CSV_PATH_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/annotations
 NPY_TRAIN_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/rats_train.npy' #Only if --transfer_mode is npy
 NPY_TEST_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/rats_valid.npy' #Only if --transfer_mode is npy
 
+#Loading defaults
 
+with open('defaults.json','r') as f:
+    defaults = json.load(f)
 
 def run(command):
     #print(command)
@@ -436,20 +439,20 @@ def fetch_with_codec(clean_path,codec,data_cache,train_percent,test_percent, use
 # --audio_data_path --source_sub_directories --data_cache --annotations_path --train_percent --test_percent --use_genders
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Prepare Data')
-    parser.add_argument('--audio_data_path', dest = 'audio_path', type=str, default=AUDIO_DATA_PATH_DEFAULT, help="Path to audio root folder")
-    parser.add_argument('--source_sub_directories', dest = 'sub_directories',type=str, default=SUBDIRECTORIES_DEFAULT, help="Sub directories for data")
-    parser.add_argument('--data_cache', dest='data_cache', type=str, default=CACHE_DEFAULT, help="Directory to Store data and meta data.")
-    parser.add_argument('--annotations_path', dest='annotations_path', type=str, default=CSV_PATH_DEFAULT, help='Path to CSV containing gender annotations.Use only if --use_genders is not None.Ignored for --transfer_mode [spectrogram|npy]')
-    parser.add_argument('--train_percent', dest='train_percent', type=int, default=10, help="Percentage for train split.Ignored for --transfer_mode npy.")
-    parser.add_argument('--test_percent', dest='test_percent', type=int, default=15, help="Percentage for test split.Ignored for --transfer_mode npy.")
-    parser.add_argument('--size_multiple', dest='size_multiple', type=int, default=4, help="Required Factor of Dimensions ONLY if spectrogram mode of tranfer is used")
-    parser.add_argument('--sampling_rate', dest='sampling_rate', type=int, default=SAMPLING_RATE, help="Sampling rate for audio. Use if tranfer_mode is spectrogram or npy")
-    parser.add_argument('--transfer_mode', dest='transfer_mode', type=str, choices=['audio','spectrogram','npy','codec'], default='audio', help='Transfer files as raw audio ,converted spectrogram, from npy files or using codec.')
-    parser.add_argument('--use_genders', dest='use_genders', type=str, default=['M','F'], help='Genders to include in train set. Pass None if you do not want to check genders.Ignored for --transfer_mode [spectrogram|npy]')
-    parser.add_argument('--npy_train_source', dest='npy_train_source', type=str, default=NPY_TRAIN_DEFAULT, help='Path where npy train set is present.')
-    parser.add_argument('--npy_test_source', dest='npy_test_source', type=str, default=NPY_TEST_DEFAULT, help='Path where npy test set is present.')
-    parser.add_argument('--codec_clean_path', dest='codec_clean_path', type=str, default=os.path.join(AUDIO_DATA_PATH_DEFAULT,'clean'), help='Path to clean audio files. Only use if --transfer_mode is codec.')
-    parser.add_argument('--codec_name', dest='codec_name', type=str, default='codec2', choices=['g726','ogg', 'g723_1','gsm','codec2'], help='Name of codec to be used. Only use if --transfer_mode is codec.')
+    parser.add_argument('--audio_data_path', dest = 'audio_path', type=str, default=defaults['audio_data_path'], help="Path to audio root folder")
+    parser.add_argument('--source_sub_directories', dest = 'sub_directories',type=str, default=defaults["source_sub_directories"], help="Sub directories for data")
+    parser.add_argument('--data_cache', dest='data_cache', type=str, default=defaults["data_cache"], help="Directory to Store data and meta data.")
+    parser.add_argument('--annotations_path', dest='annotations_path', type=str, default=defaults["annotations"], help='Path to CSV containing gender annotations.Use only if --use_genders is not None.Ignored for --transfer_mode [spectrogram|npy]')
+    parser.add_argument('--train_percent', dest='train_percent', type=int, default=defaults["train_percent"], help="Percentage for train split.Ignored for --transfer_mode npy.")
+    parser.add_argument('--test_percent', dest='test_percent', type=int, default=defaults["test_percent"], help="Percentage for test split.Ignored for --transfer_mode npy.")
+    parser.add_argument('--size_multiple', dest='size_multiple', type=int, default=defaults["size_multiple"], help="Required Factor of Dimensions ONLY if spectrogram mode of tranfer is used")
+    parser.add_argument('--sampling_rate', dest='sampling_rate', type=int, default=defaults["sampling_rate"], help="Sampling rate for audio. Use if tranfer_mode is spectrogram or npy")
+    parser.add_argument('--transfer_mode', dest='transfer_mode', type=str, choices=['audio','spectrogram','npy','codec'], default=defaults["transfer_mode"], help='Transfer files as raw audio ,converted spectrogram, from npy files or using codec.')
+    parser.add_argument('--use_genders', dest='use_genders', type=str, default=defaults["use_genders"], help='Genders to include in train set. Pass None if you do not want to check genders.Ignored for --transfer_mode [spectrogram|npy]')
+    parser.add_argument('--npy_train_source', dest='npy_train_source', type=str, default=defaults["npy_train"], help='Path where npy train set is present.')
+    parser.add_argument('--npy_test_source', dest='npy_test_source', type=str, default=defaults["npy_test"], help='Path where npy test set is present.')
+    parser.add_argument('--codec_clean_path', dest='codec_clean_path', type=str, default=defaults["codec_clean_path"], help='Path to clean audio files. Only use if --transfer_mode is codec.')
+    parser.add_argument('--codec_name', dest='codec_name', type=str, default=defaults["codec_name"], choices=['g726','ogg', 'g723_1','gsm','codec2'], help='Name of codec to be used. Only use if --transfer_mode is codec.')
     args = parser.parse_args()
 
     for arg in vars(args):

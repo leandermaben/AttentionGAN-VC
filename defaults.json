@@ -13,5 +13,9 @@
     "codec_clean_path":"/content/drive/MyDrive/NTU - Speech Augmentation/Parallel_speech_data/clean",
     "transfer_mode":"audio",
     "use_genders":"None",
-    "codec_name":"codec2"
+    "codec_name":"codec2",
+    "test_source":"/content/AttentionGAN-VC/data_cache/noisy/test",
+    "test_results":"/content/AttentionGAN-VC/results/attention_noisy/test_latest/audios/fake_B",
+    "use_gender_test":true,
+    "nfft":256
 }

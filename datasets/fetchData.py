@@ -65,17 +65,6 @@ from util.util import save_pickle
 import soundfile as sf
 import json
 
-
-#Default values.Actual values can be set from command line.
-
-AUDIO_DATA_PATH_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/Parallel_speech_data'
-SUBDIRECTORIES_DEFAULT = ['clean','noisy']
-CACHE_DEFAULT = '/content/AttentionGAN-VC/data_cache'
-SAMPLING_RATE = 8000
-CSV_PATH_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/annotations.csv' #Only if --use_genders is not None.Ignored for --transfer_mode [spectrogram|npy]
-NPY_TRAIN_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/rats_train.npy' #Only if --transfer_mode is npy
-NPY_TEST_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/rats_valid.npy' #Only if --transfer_mode is npy
-
 #Loading defaults
 
 with open('defaults.json','r') as f:

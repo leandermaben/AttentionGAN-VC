@@ -12,12 +12,12 @@ import os
 import soundfile as sf
 import shutil
 import pandas as pd
-#from timeit import default_timer as timer
+import json
+ 
+#Loading defaults
 
-RESULTS_DEFAULT = '/content/AttentionGAN-VC/results/attention_noisy/test_latest/audios/fake_B'
-SOURCE_DEFAULT = '/content/AttentionGAN-VC/data_cache/noisy/test' 
-CSV_PATH_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/annotations.csv'
-USE_GENDER =True
+with open('defaults.json','r') as f:
+    defaults = json.load(f)
 
 def calc_LSD_spectrogram(a, b):
     """
@@ -40,7 +40,7 @@ def calc_LSD_spectrogram(a, b):
 
 
 def AddNoiseFloor(data):
-    frameSz = 128
+    frameSz = defaults["fix_w"]
     noiseFloor = (np.random.rand(frameSz) - 0.5) * 1e-5
     numFrame = math.floor(len(data)/frameSz)
     st = 0
@@ -214,14 +214,14 @@ def norm_and_LSD(file1, file2):
     print("LSD (Spectrogram) between %s, %s = %f" % (file1, file2, calc_LSD_spectrogram(a, b)))
     return calc_LSD_spectrogram(a, b)
 
-def main(source_dir=SOURCE_DEFAULT,results_dir=RESULTS_DEFAULT, use_gender = USE_GENDER):
+def main(source_dir=defaults["test_source"],results_dir=defaults["test_results"], use_gender = defaults["use_gender_test"],csv_path=defaults["annotations"]):
 
     """
     Modified by Leander Maben.
     
     """
     annotations = {}
-    anno_csv = pd.read_csv(CSV_PATH_DEFAULT)
+    anno_csv = pd.read_csv(csv_path)
     for i in range(len(anno_csv)):
         row=anno_csv.iloc[i]
         annotations[row['file']]=row['gender']

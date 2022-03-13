@@ -117,7 +117,7 @@ def use_codecs(codecs, train_percent, test_percent, names, csv_path, n_epochs=75
 
 
 if __name__ == '__main__':
-    csv_path = '/content/drive/MyDrive/NTU - Speech Augmentation/att_15Mar.csv'
+    csv_path = '/content/drive/MyDrive/NTU - Speech Augmentation/att.csv'
     if not os.path.exists(csv_path):
         cols=['name','comment','avg_lsd','std_lsd','avg_mssl','std_mssl','male_avg_lsd','male_std_lsd','male_avg_mssl','male_std_mssl','female_avg_lsd','female_std_lsd','female_avg_mssl','female_std_mssl']
         df=pd.DataFrame(columns=cols)
@@ -125,14 +125,14 @@ if __name__ == '__main__':
     
     #log(csv_path,'Dummy', "Logging default parameters used - 200 lambda_L1, 15% test size",0,0)
 
-    train_percents =[25,50]
-    vary_data(train_percents,15,[f'att_noisy_{i}' for i in train_percents], csv_path)
+    # train_percents =[5,10,25,50]
+    # vary_data(train_percents,15,[f'att_noisy_{i}' for i in train_percents], csv_path)
 
-    train_percents =[5,10,25,50]
-    vary_data(train_percents,15,[f'att_noisy_{i}' for i in train_percents], csv_path,use_mask =True)
+    # train_percents =[5,10,25,50]
+    # vary_data(train_percents,15,[f'att_noisy_mask_{i}' for i in train_percents], csv_path,use_mask =True)
 
-    train_percents =[5,10,25,50]
-    vary_data(train_percents,15,[f'att_noisy_{i}' for i in train_percents], csv_path,use_phase =True)
+    train_percents =[75]
+    vary_data(train_percents,15,[f'att_noisy_phase_{i}' for i in train_percents], csv_path,use_phase =True)
 
     # lambda_L1s = [2000]
     # vary_lambdaL1(lambda_L1s ,10,15,[f'pix_noisy_lambdL1_{i}' for i in lambda_L1s], csv_path)

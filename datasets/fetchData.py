@@ -1,3 +1,54 @@
+"""
+This module implements functions to fetch data and organize them appropiately for training and testing.
+There are several ways of doing this. The mode of transfer can be selected using the command line argument --tranfer_mode.
+Following options are available: 'audio','spectrogram','npy','codec'
+
+Audio mode:
+
+Transfer data from audio_data_path directory to data_cache directory with splits.
+Following arguments may be provided: --audio_data_path --source_sub_directories --data_cache --annotations_path --train_percent --test_percent --use_genders
+
+Following directory structure is expected:
+-audio_data_path
+    -source_sub_directories[0]
+        -sample_0
+        -....
+    -source_sub_directories[1]
+        -sample_0
+        -sample_1
+
+It is also expected that the audios are present as corresponding pairs in the subdirectories.
+get_fileNames function also need to be implemented if the corresponding files pairs do not have the same name.
+
+Spectrogram:
+
+Audio data is converted to spectrograms using MelGAN and saved as pickle files(spectrogram) and npz file (statistical values).
+
+Following arguments may be provided: --audio_data_path --source_sub_directories --size_multiple --data_cache --train_percent --test_percent --sampling_rate
+
+Following directory structure is expected:
+-audio_data_path
+    -source_sub_directories[0]
+        -sample_0
+        -....
+    -source_sub_directories[1]
+        -sample_0
+        -sample_1
+
+This method does not produce good quality audios when converting from spectrogram to audio after processing. Hence, it is not recommended.
+
+NPY mode:
+Can be used if train and test data are present are separate npy files such that clean_data = npy[:, :, 0] and noisy_data = npy[:,:,1] 
+Following arguments may be provided: --npy_train_source --npy_test_source --sampling_rate
+
+Codec mode:
+Can be used if clean data is available but noisy data is unavailable.
+Noisy data can be generated using codec.
+
+Following arguments may be provided: --codec_clean_path --data_cache --train_percent --test_percent
+
+"""
+
 import argparse
 import shutil
 import torch
@@ -15,28 +66,7 @@ import soundfile as sf
 from scipy import signal
 
 
-
-def run(command):
-    #print(command)
-    exit_status = os.system(command)
-    if exit_status > 0:
-        exit(1)
-
-"""
-Code to transfer audio data from a source folder to a target folder with train and test splits.
-Change AUDIO_DATA_PATH_DEFAULT to point to root dir such that (or use command line argument)
--root
-    -subdirectory[0]
-        -sample_0
-        -....
-    -subdirectory[1]
-        -sample_0
-        -sample_1
-Change CACHE_DEFAULT to the directory where you want data to be stored.
-There are 2 options to transfer data -> It can be transferred as audio files or as spectrograms.
-Spectrograms are generated using MelGAN.However, MelGAN performs poorly when converting noisy spectrogram back to audio.
-Hence it is recommended to use the 'audio' option for the argument --transfer_mode (It is already set as default)
-"""
+#Default values.Actual values can be set from command line.
 
 AUDIO_DATA_PATH_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/Parallel_speech_data'
 SUBDIRECTORIES_DEFAULT = ['clean','noisy']
@@ -46,9 +76,19 @@ CSV_PATH_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/annotations
 NPY_TRAIN_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/rats_train.npy' #Only if --transfer_mode is npy
 NPY_TEST_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/rats_valid.npy' #Only if --transfer_mode is npy
 
+
+
+def run(command):
+    #print(command)
+    exit_status = os.system(command)
+    if exit_status > 0:
+        exit(1)
+
+
+
 ## mel function inspired from https://github.com/GANtastic3/MaskCycleGAN-VC
 
-def mel(wavspath):
+def mel(wavspath, sr):
     info = {
         'records_count' : 0, #Keep track of number of clips
         'duration' : 0 # Keep track of duration of training set for the speaker
@@ -63,7 +103,7 @@ def mel(wavspath):
         wavpath = os.path.join(wavspath,file)
         if wavpath[-4:] != '.wav':
             continue
-        wav_orig, _ = librosa.load(wavpath, sr=SAMPLING_RATE, mono=True)
+        wav_orig, _ = librosa.load(wavpath, sr=sr, mono=True)
         spec = vocoder(torch.tensor([wav_orig]))
         #print(f'Spectrogram shape: {spec.shape}')
         if spec.shape[-1] >= 64:    # training sample consists of 64 frames
@@ -74,23 +114,19 @@ def mel(wavspath):
     return mel_list, filenames, info
 
 
-
-
-
-def preprocess_dataset_spectrogram(data_path, class_id, args):
+def preprocess_dataset_spectrogram(data_path, class_id, sr, cache_folder, train_percent, test_percent, size_multiple,args):
     """Preprocesses dataset of .wav files by converting to Mel-spectrograms.
     Args:
         data_path (str): Directory containing .wav files of the speaker.
-        speaker_id (str): ID of the speaker.
+        class_id (str): ID of the class.
         cache_folder (str, optional): Directory to hold preprocessed data. Defaults to './cache/'.
         Modified By Leander Maben.
     """
 
     print(f"Preprocessing data for class: {class_id}.")
 
-    cache_folder = args.data_cache
 
-    mel_list, filenames, info = mel(data_path)
+    mel_list, filenames, info = mel(data_path, sr)
 
     if not os.path.exists(os.path.join(cache_folder, class_id)):
         os.makedirs(os.path.join(cache_folder, class_id, 'meta'))
@@ -102,8 +138,8 @@ def preprocess_dataset_spectrogram(data_path, class_id, args):
     np.random.seed(0)
     np.random.shuffle(indices)
 
-    train_split = math.floor(args.train_percent/100*len(mel_list))
-    val_split = math.floor(args.val_percent/100*len(mel_list))
+    train_split = math.floor(train_percent/100*len(mel_list))
+    val_split = math.floor(val_percent/100*len(mel_list))
     
     padding ={}
 
@@ -123,8 +159,8 @@ def preprocess_dataset_spectrogram(data_path, class_id, args):
             
             ##Padding the image
             freq_len,time_len = img.shape
-            top_pad = args.size_multiple - freq_len % args.size_multiple if freq_len % args.size_multiple!=0 else 0
-            right_pad = args.size_multiple - time_len % args.size_multiple if time_len % args.size_multiple!=0 else 0
+            top_pad = size_multiple - freq_len % size_multiple if freq_len % size_multiple!=0 else 0
+            right_pad = size_multiple - time_len % size_multiple if time_len % size_multiple!=0 else 0
             x_size = time_len+right_pad
             y_size = freq_len+top_pad
             img_padded = np.zeros((y_size,x_size))
@@ -146,71 +182,6 @@ def preprocess_dataset_spectrogram(data_path, class_id, args):
     print(f"Total clips in dataset for {class_id} is {info['records_count']}")
     print('#'*25)
 
-def AddNoiseFloor(data):
-    frameSz = 128
-    noiseFloor = (np.random.rand(frameSz) - 0.5) * 1e-5
-    numFrame = math.floor(len(data)/frameSz)
-    st = 0
-    et = frameSz-1
-
-    for i in range(numFrame):
-        if(np.sum(np.abs(data[st:et+1])) < 1e-5):
-            data[st:et+1] = data[st:et+1] + noiseFloor
-        st = et + 1
-        et += frameSz
-
-    return data
-
-def time_align(data1, data2, sr):
-    nfft = 256
-    hop_length = 1  # hop_length = win_length or frameSz - overlapSz
-    win_length = 256
-
-    ##Adding small random noise to prevent -Inf problem with Spec
-    data1 = AddNoiseFloor(data1)
-    data2 = AddNoiseFloor(data2)
-
-    ##Pad with silence to make them equal
-    zeros = np.zeros(np.abs((len(data2) - len(data1))), dtype=float)
-    padded = -1
-    if(len(data1) < len(data2)):
-        data1 = np.append(data1, zeros)
-        padded = 1
-    elif(len(data2) < len(data1)):
-        data2 = np.append(data2, zeros)
-        padded = 2
-    
-    
-    # Time Alignment
-    # Cross-Correlation and correction of lag using the spectrograms
-    spec1 = abs(librosa.stft(data1, n_fft=nfft, hop_length=hop_length,
-                             win_length=win_length, window='hamming'))
-    spec2 = abs(librosa.stft(data2, n_fft=nfft, hop_length=hop_length,
-                             win_length=win_length, window='hamming'))
-    energy1 = np.mean(spec1, axis=0)
-    energy2 = np.mean(spec2, axis=0)
-    n = len(energy1)
-
-    corr = signal.correlate(energy2, energy1, mode='same') / np.sqrt(signal.correlate(energy1,
-                                                                                      energy1, mode='same')[int(n/2)] * signal.correlate(energy2, energy2, mode='same')[int(n/2)])
-    delay_arr = np.linspace(-0.5*n/sr, 0.5*n/sr, n).round(decimals=6)
-
-
-    delay = delay_arr[np.argmax(corr)]
-
-    if(delay*sr < 0):
-        to_roll = math.ceil(delay*sr)
-    else:
-        to_roll = math.floor(delay*sr)
-
-    # correcting lag
-    # if both signals were the same length, doesn't matter which one was rolled
-    if(padded == 1 or padded == -1):
-        data1 = np.roll(data1, to_roll)
-    elif(padded == 2):
-        data2 = np.roll(data2, -to_roll)
-
-    return data1, data2
 
 
 def get_filenames(fileNameA):
@@ -226,7 +197,7 @@ def get_filenames(fileNameA):
 
 
 
-def transfer_aligned_audio_raw(root_dir,class_ids,data_cache,train_percent,test_percent, use_genders, annotations_path):
+def transfer_aligned_audio_raw(root_dir,class_ids,data_cache,train_percent,test_percent, use_genders, annotations_path, get_filenames=lambda x:x,x,x):
     """
     Transfer audio files to a convinient location for processing with train,test,validation split.
     Important Note: The splitting of data by percent is based on file numbers and not on cummulative duration
@@ -301,7 +272,7 @@ def transfer_aligned_audio_raw(root_dir,class_ids,data_cache,train_percent,test_
             print(f'{male_duration} seconds ({male_clips} clips) of male Audio in {phase}.')
             print(f'{female_duration} seconds ({female_clips} clips) of female Audio in {phase}.')
 
-def fetch_from_npy(train_path,test_path,data_cache, sr=SAMPLING_RATE):
+def fetch_from_npy(train_path,test_path,data_cache,sr):
 
     """
     Fetch train and test sets saved as npy and save them as audio files in data_cache dir.
@@ -462,7 +433,7 @@ def fetch_with_codec(clean_path,codec,data_cache,train_percent,test_percent, use
         if use_genders != None:
             print(f'{male_duration} seconds ({male_clips} clips) of male Audio in {phase}.')
             print(f'{female_duration} seconds ({female_clips} clips) of female Audio in {phase}.')
-
+# --audio_data_path --source_sub_directories --data_cache --annotations_path --train_percent --test_percent --use_genders
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Prepare Data')
     parser.add_argument('--audio_data_path', dest = 'audio_path', type=str, default=AUDIO_DATA_PATH_DEFAULT, help="Path to audio root folder")
@@ -472,6 +443,7 @@ if __name__ == '__main__':
     parser.add_argument('--train_percent', dest='train_percent', type=int, default=10, help="Percentage for train split.Ignored for --transfer_mode npy.")
     parser.add_argument('--test_percent', dest='test_percent', type=int, default=15, help="Percentage for test split.Ignored for --transfer_mode npy.")
     parser.add_argument('--size_multiple', dest='size_multiple', type=int, default=4, help="Required Factor of Dimensions ONLY if spectrogram mode of tranfer is used")
+    parser.add_argument('--sampling_rate', dest='sampling_rate', type=int, default=SAMPLING_RATE, help="Sampling rate for audio. Use if tranfer_mode is spectrogram or npy")
     parser.add_argument('--transfer_mode', dest='transfer_mode', type=str, choices=['audio','spectrogram','npy','codec'], default='audio', help='Transfer files as raw audio ,converted spectrogram, from npy files or using codec.')
     parser.add_argument('--use_genders', dest='use_genders', type=str, default=['M','F'], help='Genders to include in train set. Pass None if you do not want to check genders.Ignored for --transfer_mode [spectrogram|npy]')
     parser.add_argument('--npy_train_source', dest='npy_train_source', type=str, default=NPY_TRAIN_DEFAULT, help='Path where npy train set is present.')
@@ -484,10 +456,10 @@ if __name__ == '__main__':
         print('[%s] = ' % arg, getattr(args, arg))
     if args.transfer_mode == 'spectrogram':
         for class_id in args.sub_directories:        
-            preprocess_dataset_spectrogram(os.path.join(args.audio_path,class_id),class_id,args)
+            preprocess_dataset_spectrogram(os.path.join(args.audio_path,class_id),class_id,args.sampling_rate, args.data_cache, args.train_percent, args.test_percent, args.size_multiple)
     elif args.transfer_mode == 'audio':
-        transfer_aligned_audio_raw(args.audio_path,args.sub_directories,args.data_cache,args.train_percent,args.test_percent, args.use_genders, args.annotations_path)
+        transfer_aligned_audio_raw(args.audio_path,args.sub_directories,args.data_cache,args.train_percent,args.test_percent, args.use_genders, args.annotations_path, get_filenames)
     elif args.transfer_mode == 'npy':
-        fetch_from_npy(args.npy_train_source, args.npy_test_source,args.data_cache)
+        fetch_from_npy(args.npy_train_source, args.npy_test_source,args.data_cache, args.sampling_rate)
     else:
         fetch_with_codec(args.codec_clean_path, args.codec_name, args.data_cache, args.train_percent, args.test_percent, args.use_genders, args.annotations_path)

@@ -12,7 +12,7 @@
     "size_multiple":4,
     "codec_clean_path":"/content/drive/MyDrive/NTU - Speech Augmentation/Parallel_speech_data/clean",
     "transfer_mode":"audio",
-    "use_genders":"None",
+    "use_genders":["M","F"],
     "codec_name":"codec2",
     "test_source":"/content/AttentionGAN-VC/data_cache/noisy/test",
     "test_results":"/content/AttentionGAN-VC/results/attention_noisy/test_latest/audios/fake_B",

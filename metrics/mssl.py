@@ -8,6 +8,7 @@ import scipy.io.wavfile as wav
 import math
 import soundfile as sf
 import shutil
+import pandas as pd
 import json
  
 #Loading defaults
@@ -187,11 +188,11 @@ def time_and_energy_align(data1, data2, sr):
 
     return data1, data2
 
-def main(source_dir=SOURCE_DEFAULT,results_dir=RESULTS_DEFAULT, use_gender=USE_GENDER):
+def main(source_dir=defaults["test_source"],results_dir=defaults["test_results"], use_gender=defaults["use_gender_test"]):
 
     if use_gender:
         annotations = {}
-        anno_csv = pd.read_csv(CSV_PATH_DEFAULT)
+        anno_csv = pd.read_csv(defaults["annotations"])
         for i in range(len(anno_csv)):
             row=anno_csv.iloc[i]
             annotations[row['file']]=row['gender']

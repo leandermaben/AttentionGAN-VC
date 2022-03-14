@@ -2,12 +2,9 @@
 This module implements functions to fetch data and organize them appropiately for training and testing.
 There are several ways of doing this. The mode of transfer can be selected using the command line argument --tranfer_mode.
 Following options are available: 'audio','spectrogram','npy','codec'
-
 Audio mode:
-
 Transfer data from audio_data_path directory to data_cache directory with splits.
 Following arguments may be provided: --audio_data_path --source_sub_directories --data_cache --annotations_path --train_percent --test_percent --use_genders
-
 Following directory structure is expected:
 -audio_data_path
     -source_sub_directories[0]
@@ -16,16 +13,11 @@ Following directory structure is expected:
     -source_sub_directories[1]
         -sample_0
         -sample_1
-
 It is also expected that the audios are present as corresponding pairs in the subdirectories.
 get_fileNames function also need to be implemented if the corresponding files pairs do not have the same name.
-
 Spectrogram:
-
 Audio data is converted to spectrograms using MelGAN and saved as pickle files(spectrogram) and npz file (statistical values).
-
 Following arguments may be provided: --audio_data_path --source_sub_directories --size_multiple --data_cache --train_percent --test_percent --sampling_rate
-
 Following directory structure is expected:
 -audio_data_path
     -source_sub_directories[0]
@@ -34,19 +26,14 @@ Following directory structure is expected:
     -source_sub_directories[1]
         -sample_0
         -sample_1
-
 This method does not produce good quality audios when converting from spectrogram to audio after processing. Hence, it is not recommended.
-
 NPY mode:
 Can be used if train and test data are present are separate npy files such that clean_data = npy[:, :, 0] and noisy_data = npy[:,:,1] 
 Following arguments may be provided: --npy_train_source --npy_test_source --sampling_rate
-
 Codec mode:
 Can be used if clean data is available but noisy data is unavailable.
 Noisy data can be generated using codec.
-
 Following arguments may be provided: --codec_clean_path --data_cache --train_percent --test_percent
-
 """
 
 import argparse
@@ -189,7 +176,7 @@ def get_filenames(fileNameA):
 
 
 
-def transfer_aligned_audio_raw(root_dir,class_ids,data_cache,train_percent,test_percent, use_genders, annotations_path, get_filenames=lambda x:x,x,x):
+def transfer_aligned_audio_raw(root_dir,class_ids,data_cache,train_percent,test_percent, use_genders, annotations_path, get_filenames=lambda x:(x,x,x)):
     """
     Transfer audio files to a convinient location for processing with train,test,validation split.
     Important Note: The splitting of data by percent is based on file numbers and not on cummulative duration
@@ -307,6 +294,8 @@ def fetch_with_codec(clean_path,codec,data_cache,train_percent,test_percent, use
         print('Using codec g723_1 with bit rate 6.3k')
     elif codec == 'gsm':
         print('Using codec gsm with bit rate 13k')
+    elif codec == 'codec2':
+        print('Using codec codec2 with bit rate 3.2k')
 
     if use_genders != 'None':
         annotations = {}
@@ -422,7 +411,7 @@ def fetch_with_codec(clean_path,codec,data_cache,train_percent,test_percent, use
                     female_duration+=duration
 
         print(f'{total_duration} seconds ({total_clips} clips) of Audio saved to {phase}.')
-        if use_genders != None:
+        if use_genders != 'None':
             print(f'{male_duration} seconds ({male_clips} clips) of male Audio in {phase}.')
             print(f'{female_duration} seconds ({female_clips} clips) of female Audio in {phase}.')
 # --audio_data_path --source_sub_directories --data_cache --annotations_path --train_percent --test_percent --use_genders

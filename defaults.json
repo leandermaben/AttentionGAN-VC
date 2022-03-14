@@ -17,5 +17,15 @@
     "test_source":"/content/AttentionGAN-VC/data_cache/noisy/test",
     "test_results":"/content/AttentionGAN-VC/results/attention_noisy/test_latest/audios/fake_B",
     "use_gender_test":true,
-    "nfft":256
+    "nfft":256,
+    "align_hop":1,
+    "align_win_len":256,
+    "norm_overlap":128,
+    "norm_frameSz":256,
+    "lsd_eps":1e-9,
+    "standard_lufs":-23.0,
+    "mssl_overlap":0.75,
+    "mssl_mag_weight":1,
+    "mssl_logmag_weight":1,
+    "metrics_temp_cache":"/content/AttentionGAN-VC/temp"
 }

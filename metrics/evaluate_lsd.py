@@ -56,9 +56,9 @@ def AddNoiseFloor(data):
 
 
 def time_and_energy_align(data1, data2, sr):
-    nfft = 256
-    hop_length = 1  # hop_length = win_length or frameSz - overlapSz
-    win_length = 256
+    nfft = defaults["nfft"]
+    hop_length = defaults["align_hop"]  # hop_length = win_length or frameSz - overlapSz
+    win_length = defaults["align_win_len"]
 
     ##Adding small random noise to prevent -Inf problem with Spec
     data1 = AddNoiseFloor(data1)
@@ -175,10 +175,10 @@ def normalize(sig1, sig2):
 
 
 def norm_and_LSD(file1, file2):
-    nfft = 256
-    overlapSz = 128
-    frameSz = 256
-    eps = 1e-9
+    nfft = defaults["nfft"]
+    overlapSz = defaults["norm_overlap"]
+    frameSz = defaults["norm_frameSz"]
+    eps = defaults["lsd_eps"]
 
     #normalizing
     
@@ -242,7 +242,7 @@ def main(source_dir=defaults["test_source"],results_dir=defaults["test_results"]
 
     if file1_rate!=file2_rate:
         ## Storing original audios in a new temp cache with desired sample_rate
-        TEMP_CACHE = '/content/temp'
+        TEMP_CACHE = defaults["metrics_temp_cache"]
         os.makedirs(TEMP_CACHE)
         for file in os.listdir(source_dir):
             file1 = os.path.join(source_dir,file)

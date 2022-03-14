@@ -8,27 +8,12 @@ import scipy.io.wavfile as wav
 import math
 import soundfile as sf
 import shutil
-import pandas as pd
+import json
+ 
+#Loading defaults
 
-
-"""
-RESULTS_DEFUALT points to directory with generated clips
-SOURCE_DEFAULT points to directory with the targets
-USE_GENDER - set to true if separate scores for male and female are required otherwise set to false
-CSV_PATH can be ignored if separate scores for male and female are not required otherwise points to csv with male and female labels for the clips
-
-"""
-
-RESULTS_DEFAULT = '/content/AttentionGAN-VC/results/attention_noisy/test_latest/audios/fake_B'
-SOURCE_DEFAULT = '/content/AttentionGAN-VC/data_cache/noisy/test' 
-CSV_PATH_DEFAULT = '/content/drive/MyDrive/NTU - Speech Augmentation/annotations.csv'
-USE_GENDER = True
-
-STANDARD_LUFS = -23.0
-OVERLAP_DEFAULT = 0.75 
-
-MAG_WEIGHT_DEFAULT = 1
-LOGMAG_WEIGHT_DEFAULT = 1
+with open('defaults.json','r') as f:
+    defaults = json.load(f)
 
 
 def stft(audio,n_fft,overlap):
@@ -45,11 +30,6 @@ def safe_log(x, eps=1e-5):
     safe_x = np.where(x <= eps, eps, x)
     return np.log(safe_x)
 
-# def normalize(audio, sr, target_loudness=STANDARD_LUFS):
-#     meter = pyln.Meter(sr)
-#     loudness = meter.integrated_loudness(audio)
-#     audio = pyln.normalize.loudness(audio, loudness, target_loudness = target_loudness)
-#     return audio
 
 def normalize(sig1, sig2):
     """sig1 is the ground_truth file
@@ -93,7 +73,7 @@ def normalize(sig1, sig2):
 
 
 
-def compute_mssl(file1,file2,n_ffts, mag_weight=MAG_WEIGHT_DEFAULT, logmag_weight=LOGMAG_WEIGHT_DEFAULT):
+def compute_mssl(file1,file2,n_ffts, mag_weight=defaults["mssl_mag_weight"], logmag_weight=defaults["mssl_logmag_weight"]):
     loss = 0
 
     _, aud_1 = wav.read(file1)
@@ -106,8 +86,8 @@ def compute_mssl(file1,file2,n_ffts, mag_weight=MAG_WEIGHT_DEFAULT, logmag_weigh
     data1, data2 = time_and_energy_align(data1,data2, sr)
 
     for n_fft in n_ffts:
-        spec1 =stft(data1, n_fft, OVERLAP_DEFAULT)
-        spec2 =stft(data2, n_fft, OVERLAP_DEFAULT)
+        spec1 =stft(data1, n_fft, defaults["mssl_overlap"])
+        spec2 =stft(data2, n_fft, defaults["mssl_overlap"])
         if mag_weight > 0:
             loss += mag_weight * np.mean(np.abs(spec1-spec2))
         if logmag_weight > 0:
@@ -115,7 +95,7 @@ def compute_mssl(file1,file2,n_ffts, mag_weight=MAG_WEIGHT_DEFAULT, logmag_weigh
     return loss
 
 def AddNoiseFloor(data):
-    frameSz = 128
+    frameSz = defaults["fix_w"]
     noiseFloor = (np.random.rand(frameSz) - 0.5) * 1e-5
     numFrame = math.floor(len(data)/frameSz)
     st = 0
@@ -131,9 +111,9 @@ def AddNoiseFloor(data):
 
 
 def time_and_energy_align(data1, data2, sr):
-    nfft = 256
-    hop_length = 1  # hop_length = win_length or frameSz - overlapSz
-    win_length = 256
+    nfft = defaults["nfft"]
+    hop_length = defaults["align_hop"]  # hop_length = win_length or frameSz - overlapSz
+    win_length = defaults["align_win_len"]
 
     ##Adding small random noise to prevent -Inf problem with Spec
     data1 = AddNoiseFloor(data1)
@@ -225,7 +205,7 @@ def main(source_dir=SOURCE_DEFAULT,results_dir=RESULTS_DEFAULT, use_gender=USE_G
 
     if file1_rate!=file2_rate:
         ## Storing original audios in a new temp cache with desired sample_rate
-        TEMP_CACHE = '/content/temp'
+        TEMP_CACHE = defaults["metrics_temp_cache"]
         os.makedirs(TEMP_CACHE)
         for file in os.listdir(source_dir):
             file1 = os.path.join(source_dir,file)

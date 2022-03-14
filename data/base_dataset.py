@@ -59,6 +59,14 @@ class BaseDataset(data.Dataset, ABC):
         """
         pass
 
+#Custom Transforms
+class CustResize(object):
+    def __init__(self, output_size):
+        assert isinstance(output_size, (int, tuple))
+        self.output_size = output_size
+
+    def __call__(self, pic):
+        return pic.resize(self.output_size, Image.LANCZOS)
 
 def get_params(opt, size):
     w, h = size
@@ -83,8 +91,8 @@ def get_transform(opt, params=None, grayscale=False, method=Image.BICUBIC, conve
     if grayscale:
         transform_list.append(transforms.Grayscale(1))
     if 'resize' in opt.preprocess:
-        osize = [opt.load_size, opt.load_size]
-        transform_list.append(transforms.Resize(osize, method))
+        osize = (opt.load_size, opt.load_size)
+        transform_list.append(CustResize(osize))
     elif 'scale_width' in opt.preprocess:
         transform_list.append(transforms.Lambda(lambda img: __scale_width(img, opt.load_size, method)))
 

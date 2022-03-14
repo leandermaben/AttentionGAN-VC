@@ -119,13 +119,13 @@ class AttentionGANModel(BaseModel):
 
             self.rec_A, _, _, _, _, _, _, _, _, _, _, \
             _, _, _, _, _, _, _, _, _, _, \
-            _, _, _, _, _, _, _, _, _ = self.netG_B(self.fake_B, torch.ones_like(self.fake_B))   # G_B(G_A(A))
+            _, _, _, _, _, _, _, _, _ = self.netG_B(self.fake_B, torch.ones(self.fake_B.size(0),1,self.fake_B.size(2),self.fake_B.size(3)))   # G_B(G_A(A))
             self.fake_A, self.o1_a, self.o2_a, self.o3_a, self.o4_a, self.o5_a, self.o6_a, self.o7_a, self.o8_a, self.o9_a, self.o10_a, \
             self.a1_a, self.a2_a, self.a3_a, self.a4_a, self.a5_a, self.a6_a, self.a7_a, self.a8_a, self.a9_a, self.a10_a, \
             self.i1_a, self.i2_a, self.i3_a, self.i4_a, self.i5_a, self.i6_a, self.i7_a, self.i8_a, self.i9_a = self.netG_B(self.real_B, self.B_mask)  # G_B(B)
             self.rec_B, _, _, _, _, _, _, _, _, _, _, \
             _, _, _, _, _, _, _, _, _, _, \
-            _, _, _, _, _, _, _, _, _ = self.netG_A(self.fake_A , torch.ones_like(self.fake_A))   # G_A(G_B(B))
+            _, _, _, _, _, _, _, _, _ = self.netG_A(self.fake_A , torch.ones(self.fake_A.size(0),1,self.fake_A.size(2),self.fake_A.size(3)))   # G_A(G_B(B))
 
     def backward_D_basic(self, netD, real, fake):
         """Calculate GAN loss for the discriminator

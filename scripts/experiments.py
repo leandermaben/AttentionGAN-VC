@@ -146,10 +146,15 @@ if __name__ == '__main__':
     
     #log(csv_path,'Dummy', "Logging default parameters used - 200 lambda_L1, 15% test size",0,0)
 
-    # train_percents =[10]
-    # vary_data(train_percents,15,[f'att_noisy_cyc_disc_lambda_cyc_1_{i}' for i in train_percents], csv_path,lambda_cyc=1)
-    for train_p in [10,25,50]:
-        use_codec_data('codec2', f'att_codec2_{train_p}',csv_path)
+    train_percents =[5,10]
+    vary_data(train_percents,15,[f'att_noisy_cyc_disc_lambda_cyc_5_phase_{i}' for i in train_percents], csv_path,lambda_cyc=5, use_phase=True)
+
+    # train_percents =[5,10,25]
+    # vary_data(train_percents,15,[f'att_noisy_cyc_disc_lambda_cyc_1_mask_{i}' for i in train_percents], csv_path,lambda_cyc=1, use_mask=True)
+
+    
+    # for train_p in [10,25,50]:
+    #     use_codec_data('codec2', f'att_codec2_{train_p}',csv_path)
 
     # train_percents =[10]
     # vary_data(train_percents,15,[f'att_noisy_cyc_disc_lambda_cyc_1_{i}' for i in train_percents], csv_path,lambda_cyc=1, use_cycled_discriminators=False)

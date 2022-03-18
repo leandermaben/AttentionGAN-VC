@@ -414,7 +414,56 @@ def fetch_with_codec(clean_path,codec,data_cache,train_percent,test_percent, use
         if use_genders != 'None':
             print(f'{male_duration} seconds ({male_clips} clips) of male Audio in {phase}.')
             print(f'{female_duration} seconds ({female_clips} clips) of female Audio in {phase}.')
-# --audio_data_path --source_sub_directories --data_cache --annotations_path --train_percent --test_percent --use_genders
+
+def additive_noise(clean_path,noise_file,data_cache,train_speakers,test_speakers,train_duration_max,test_duration_max):
+    noise, noise_sr = librosa.load(noise_file, sr=None)
+
+    train_clips = []
+    test_clips = []
+    
+    for file in os.listdir(clean_path):
+        if file[:16] in train_speakers:
+            train_clips.append(file)
+        elif file[:16] in test_speakers:
+            test_clips.append(file)
+
+    np.random.seed(7)
+    np.random.shuffle(train_clips)
+    np.random.seed(8)
+    np.random.shuffle(test_clips)
+
+    os.makedirs(os.path.join(data_cache,'clean','train'))
+    os.makedirs(os.path.join(data_cache,'clean','test'))
+    os.makedirs(os.path.join(data_cache,'noisy','train'))
+    os.makedirs(os.path.join(data_cache,'noisy','test'))
+
+    train_duration_saved = 0
+    test_duration_saved = 0
+    for clip in train_clips:
+        if librosa.get_duration(filename=os.path.join(clean_path,clip)) + train_duration_saved < train_duration_max:
+            shutil.copyfile(os.path.join(clean_path,clip),os.path.join(data_cache,'clean','train',clip))
+            clean_data, clean_sr = librosa.load(os.path.join(clean_path,clip), sr=None)
+            assert clean_sr == noise_sr
+            assert noise.shape[0]>clean_data.shape[0]
+            start = np.random.randint(0,noise.shape[0]-clean_data.shape[0]+1)
+            result = 0.5*clean_data + 0.5*noise[start:start+clean_data.shape[0]]
+            sf.write(os.path.join(data_cache,'noisy','train',clip),result,clean_sr)
+            train_duration_saved+=librosa.get_duration(filename=os.path.join(clean_path,clip))
+
+    
+    for clip in test_clips:
+        if librosa.get_duration(filename=os.path.join(clean_path,clip)) + test_duration_saved < test_duration_max:
+            shutil.copyfile(os.path.join(clean_path,clip),os.path.join(data_cache,'clean','test',clip))
+            clean_data, clean_sr = librosa.load(os.path.join(clean_path,clip), sr=None)
+            assert clean_sr == noise_sr
+            assert noise.shape[0]>clean_data.shape[0]
+            start = np.random.randint(0,noise.shape[0]-clean_data.shape[0]+1)
+            result = 0.5*clean_data + 0.5*noise[start:start+clean_data.shape[0]]
+            sf.write(os.path.join(data_cache,'noisy','test',clip),result,clean_sr)
+            test_duration_saved+=librosa.get_duration(filename=os.path.join(clean_path,clip))
+
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Prepare Data')
     parser.add_argument('--audio_data_path', dest = 'audio_path', type=str, default=defaults['audio_data_path'], help="Path to audio root folder")
@@ -444,3 +493,5 @@ if __name__ == '__main__':
         fetch_from_npy(args.npy_train_source, args.npy_test_source,args.data_cache, args.sampling_rate)
     else:
         fetch_with_codec(args.codec_clean_path, args.codec_name, args.data_cache, args.train_percent, args.test_percent, args.use_genders, args.annotations_path)
+
+    # additive_noise(os.path.join(defaults["audio_data_path"],"clean"), defaults["noise_file"],defaults["data_cache"], defaults["train_speakers"], defaults["test_speakers"], defaults["train_duration_max"], defaults["test_duration_max"])

@@ -446,10 +446,11 @@ def additive_noise(clean_path,noise_file,data_cache,train_speakers,test_speakers
             assert clean_sr == noise_sr
             assert noise.shape[0]>clean_data.shape[0]
             start = np.random.randint(0,noise.shape[0]-clean_data.shape[0]+1)
-            result = 0.5*clean_data + 0.5*noise[start:start+clean_data.shape[0]]
+            result = defaults["clean_additive_weight"]*clean_data + defaults["noisy_additive_weight"]*noise[start:start+clean_data.shape[0]]
             sf.write(os.path.join(data_cache,'noisy','train',clip),result,clean_sr)
             train_duration_saved+=librosa.get_duration(filename=os.path.join(clean_path,clip))
 
+    print(f'Saved {train_duration_saved} seconds of audio to train.')
     
     for clip in test_clips:
         if librosa.get_duration(filename=os.path.join(clean_path,clip)) + test_duration_saved < test_duration_max:
@@ -462,6 +463,7 @@ def additive_noise(clean_path,noise_file,data_cache,train_speakers,test_speakers
             sf.write(os.path.join(data_cache,'noisy','test',clip),result,clean_sr)
             test_duration_saved+=librosa.get_duration(filename=os.path.join(clean_path,clip))
 
+    print(f'Saved {test_duration_saved} seconds of audio to test.')
 
 
 if __name__ == '__main__':
@@ -470,16 +472,21 @@ if __name__ == '__main__':
     parser.add_argument('--source_sub_directories', dest = 'sub_directories',type=str, default=defaults["source_sub_directories"], help="Sub directories for data")
     parser.add_argument('--data_cache', dest='data_cache', type=str, default=defaults["data_cache"], help="Directory to Store data and meta data.")
     parser.add_argument('--annotations_path', dest='annotations_path', type=str, default=defaults["annotations"], help='Path to CSV containing gender annotations.Use only if --use_genders is not None.Ignored for --transfer_mode [spectrogram|npy]')
-    parser.add_argument('--train_percent', dest='train_percent', type=int, default=defaults["train_percent"], help="Percentage for train split.Ignored for --transfer_mode npy.")
-    parser.add_argument('--test_percent', dest='test_percent', type=int, default=defaults["test_percent"], help="Percentage for test split.Ignored for --transfer_mode npy.")
+    parser.add_argument('--train_percent', dest='train_percent', type=int, default=defaults["train_percent"], help="Percentage for train split.Ignored for --transfer_mode npy or additive_noise.")
+    parser.add_argument('--test_percent', dest='test_percent', type=int, default=defaults["test_percent"], help="Percentage for test split.Ignored for --transfer_mode npy or additive_noise.")
     parser.add_argument('--size_multiple', dest='size_multiple', type=int, default=defaults["size_multiple"], help="Required Factor of Dimensions ONLY if spectrogram mode of tranfer is used")
     parser.add_argument('--sampling_rate', dest='sampling_rate', type=int, default=defaults["sampling_rate"], help="Sampling rate for audio. Use if tranfer_mode is spectrogram or npy")
-    parser.add_argument('--transfer_mode', dest='transfer_mode', type=str, choices=['audio','spectrogram','npy','codec'], default=defaults["transfer_mode"], help='Transfer files as raw audio ,converted spectrogram, from npy files or using codec.')
+    parser.add_argument('--transfer_mode', dest='transfer_mode', type=str, choices=['audio','spectrogram','npy','codec','additive_noise'], default=defaults["transfer_mode"], help='Transfer files as raw audio ,converted spectrogram, from npy files, using codecor adding noise.')
     parser.add_argument('--use_genders', dest='use_genders', type=str, default=defaults["use_genders"], help='Genders to include in train set. Pass None if you do not want to check genders.Ignored for --transfer_mode [spectrogram|npy]')
     parser.add_argument('--npy_train_source', dest='npy_train_source', type=str, default=defaults["npy_train"], help='Path where npy train set is present.')
     parser.add_argument('--npy_test_source', dest='npy_test_source', type=str, default=defaults["npy_test"], help='Path where npy test set is present.')
-    parser.add_argument('--codec_clean_path', dest='codec_clean_path', type=str, default=defaults["codec_clean_path"], help='Path to clean audio files. Only use if --transfer_mode is codec.')
+    parser.add_argument('--clean_path', dest='clean_path', type=str, default=defaults["clean_path"], help='Path to clean audio files. Only use if --transfer_mode is codec or additive_noise.')
     parser.add_argument('--codec_name', dest='codec_name', type=str, default=defaults["codec_name"], choices=['g726','ogg', 'g723_1','gsm','codec2'], help='Name of codec to be used. Only use if --transfer_mode is codec.')
+    parser.add_argument('--noise_file', dest='noise_file', type=str, default=defaults["noise_file"], help="Path to file containing noise.")
+    parser.add_argument('--train_speakers', dest='train_speakers', nargs='+' ,type=str, default=defaults["train_speakers"], help="Ids of speakers to be used in train set. Use only if --transfer_mode is additive_noise.")
+    parser.add_argument('--test_speakers', dest='test_speakers', nargs='+' ,type=str, default=defaults["test_speakers"], help="Ids of speakers to be used in test set. Use only if --transfer_mode is additive_noise.")
+    parser.add_argument('--train_duration_max', dest='train_duration_max' ,type=int, default=defaults["train_duration_max"], help="Max duration of train dataset. Use only if --transfer_mode is additive_noise.")
+    parser.add_argument('--test_duration_max', dest='test_duration_max' ,type=int, default=defaults["test_duration_max"], help="Max duration of test dataset. Use only if --transfer_mode is additive_noise.")
     args = parser.parse_args()
 
     for arg in vars(args):
@@ -491,7 +498,7 @@ if __name__ == '__main__':
         transfer_aligned_audio_raw(args.audio_path,args.sub_directories,args.data_cache,args.train_percent,args.test_percent, args.use_genders, args.annotations_path, get_filenames)
     elif args.transfer_mode == 'npy':
         fetch_from_npy(args.npy_train_source, args.npy_test_source,args.data_cache, args.sampling_rate)
-    else:
-        fetch_with_codec(args.codec_clean_path, args.codec_name, args.data_cache, args.train_percent, args.test_percent, args.use_genders, args.annotations_path)
-
-    # additive_noise(os.path.join(defaults["audio_data_path"],"clean"), defaults["noise_file"],defaults["data_cache"], defaults["train_speakers"], defaults["test_speakers"], defaults["train_duration_max"], defaults["test_duration_max"])
+    elif args.transfer_mode == 'codec':
+        fetch_with_codec(args.clean_path, args.codec_name, args.data_cache, args.train_percent, args.test_percent, args.use_genders, args.annotations_path)
+    elif args.transfer_mode == 'additive_noise':
+        additive_noise(args.clean_path, args.noise_file, args.data_cache, args.train_speakers, args.test_speakers, args.train_duration_max, args.test_duration_max)

@@ -34,6 +34,9 @@ Codec mode:
 Can be used if clean data is available but noisy data is unavailable.
 Noisy data can be generated using codec.
 Following arguments may be provided: --codec_clean_path --data_cache --train_percent --test_percent
+Additive Noise:
+Can be used if a noise file is available and all noise is to be generated from that file.
+Following arguments may be provided: --clean_path, --noise_file, --data_cache, --train_speakers, --test_speakers, --train_duration_max, --test_duration_max
 """
 
 import argparse

@@ -1,7 +1,7 @@
 """
 This module implements functions to fetch data and organize them appropiately for training and testing.
 There are several ways of doing this. The mode of transfer can be selected using the command line argument --tranfer_mode.
-Following options are available: 'audio','spectrogram','npy','codec'
+Following options are available: 'audio','spectrogram','npy','codec', 'additive_noise
 Audio mode:
 Transfer data from audio_data_path directory to data_cache directory with splits.
 Following arguments may be provided: --audio_data_path --source_sub_directories --data_cache --annotations_path --train_percent --test_percent --use_genders

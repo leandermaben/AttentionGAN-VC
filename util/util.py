@@ -8,6 +8,10 @@ import pickle
 import pyloudnorm as pyln
 import librosa
 import soundfile as sf
+import json
+
+with open('defaults.json','r') as f:
+    defaults = json.load(f)
 
 def load_pickle_file(fileName):
     with open(fileName, 'rb') as f:
@@ -158,7 +162,7 @@ def getTimeSeries(im_mag, im_phase, img_path, pow, energy = 1.0, state = None, u
     Modified by Leander Maben.
     """
 
-    mag_spec, phase, sr = extract(img_path[0], 8000, energy, state = state)
+    mag_spec, phase, sr = extract(img_path[0], defaults["sampling_rate"], energy, state = state)
     log_spec = power_to_db(mag_spec)
 
     h, w = mag_spec.shape

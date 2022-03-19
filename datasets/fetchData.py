@@ -443,7 +443,7 @@ def additive_noise(clean_path,noise_file,data_cache,train_speakers,test_speakers
     train_duration_saved = 0
     test_duration_saved = 0
     for clip in train_clips:
-        if librosa.get_duration(filename=os.path.join(clean_path,clip)) + train_duration_saved < train_duration_max:
+        if librosa.get_duration(filename=os.path.join(clean_path,clip)) + train_duration_saved < train_duration_max and librosa.get_duration(filename=os.path.join(clean_path,clip))>1:
             shutil.copyfile(os.path.join(clean_path,clip),os.path.join(data_cache,'clean','train',clip))
             clean_data, clean_sr = librosa.load(os.path.join(clean_path,clip), sr=None)
             assert clean_sr == noise_sr
@@ -456,7 +456,7 @@ def additive_noise(clean_path,noise_file,data_cache,train_speakers,test_speakers
     print(f'Saved {train_duration_saved} seconds of audio to train.')
     
     for clip in test_clips:
-        if librosa.get_duration(filename=os.path.join(clean_path,clip)) + test_duration_saved < test_duration_max:
+        if librosa.get_duration(filename=os.path.join(clean_path,clip)) + test_duration_saved < test_duration_max and librosa.get_duration(filename=os.path.join(clean_path,clip))>1:
             shutil.copyfile(os.path.join(clean_path,clip),os.path.join(data_cache,'clean','test',clip))
             clean_data, clean_sr = librosa.load(os.path.join(clean_path,clip), sr=None)
             assert clean_sr == noise_sr

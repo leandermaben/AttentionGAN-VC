@@ -322,7 +322,7 @@ def fetch_with_codec(clean_path,codec,data_cache,train_speakers,test_speakers,tr
     duration_max = {'train':train_duration_max, 'test':test_duration_max}
     clips = train_clips+test_clips
     phase_labels = ['train']*len(train_clips)+['test']*len(test_clips)
-    
+
     for clip in zip(clips,phase_labels):
         if librosa.get_duration(filename=os.path.join(clean_path,clip)) + duration_saved[phase] < duration_max[phase] and librosa.get_duration(filename=os.path.join(clean_path,clip))>1:
             shutil.copyfile(os.path.join(clean_path,clip),os.path.join(data_cache,'clean',phase,clip))
@@ -477,6 +477,6 @@ if __name__ == '__main__':
     elif args.transfer_mode == 'npy':
         fetch_from_npy(args.npy_train_source, args.npy_test_source,args.data_cache, args.sampling_rate)
     elif args.transfer_mode == 'codec':
-        fetch_with_codec(args.clean_path, args.codec_name, args.data_cache, args.train_percent, args.test_percent, args.use_genders, args.annotations_path)
+        fetch_with_codec(args.clean_path, args.codec_name, args.data_cache, args.train_speakers, args.test_speakers, args.train_duration_max, args.test_duration_max)
     elif args.transfer_mode == 'additive_noise':
         additive_noise(args.clean_path, args.noise_file, args.data_cache, args.train_speakers, args.test_speakers, args.train_duration_max, args.test_duration_max)

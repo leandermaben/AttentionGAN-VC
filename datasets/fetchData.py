@@ -277,7 +277,7 @@ def fetch_from_npy(train_path,test_path,data_cache,sr):
         sf.write(os.path.join(data_cache,'clean','test',f'{i}_audio.wav'),test_set[i,:,0],sr)
         sf.write(os.path.join(data_cache,'noisy','test',f'{i}_audio.wav'),test_set[i,:,1],sr)
 
-def fetch_with_codec(clean_path,codec,data_cache,train_percent,test_percent, use_genders, annotations_path):
+def fetch_with_codec(clean_path,codec,data_cache,train_speakers,test_speakers,train_duration_max,test_duration_max):
     """
     Transfer audio files to a convinient location for processing with train,test,validation split.
     Generate the noisy data set from clean dataset using the specified codec.
@@ -285,8 +285,6 @@ def fetch_with_codec(clean_path,codec,data_cache,train_percent,test_percent, use
     clean_path(str) - Root directory where files of specified classes are present in subdirectories.
     codec(str) - Name of codec to be used.
     data_cache(str) - Root directory to store data. Data is stored in clean and noisy sub-directories.
-    train_percent(int) - Percent of data clips in train split
-    test_percent(int) - Percent of data clips in test split
     Created By Leander Maben. 
     """
     if codec == 'g726':
@@ -298,52 +296,38 @@ def fetch_with_codec(clean_path,codec,data_cache,train_percent,test_percent, use
     elif codec == 'gsm':
         print('Using codec gsm with bit rate 13k')
     elif codec == 'codec2':
-        print('Using codec codec2 with bit rate 3.2k')
+        print(f'Using codec codec2 with bit rate {defaults["codec2_bitrate"]}')
 
-    if use_genders != 'None':
-        annotations = {}
-        anno_csv = pd.read_csv(annotations_path)
-        for i in range(len(anno_csv)):
-            row=anno_csv.iloc[i]
-            annotations[row['file']]=row['gender']
+    train_clips = []
+    test_clips = []
+    
+    for file in os.listdir(clean_path):
+        if file[:16] in train_speakers:
+            train_clips.append(file)
+        elif file[:16] in test_speakers:
+            test_clips.append(file)
+
+    np.random.seed(7)
+    np.random.shuffle(train_clips)
+    np.random.seed(8)
+    np.random.shuffle(test_clips)
 
 
     for class_id in ['clean','noisy']:
         os.makedirs(os.path.join(data_cache,class_id,'train'))
         os.makedirs(os.path.join(data_cache,class_id,'test'))
 
-    files_list = [x for x in os.listdir(clean_path) if x[-4:]=='.wav']
-    num_files = len(files_list)
-
-    indices = np.arange(0,num_files)
-    np.random.seed(7)
-    np.random.shuffle(indices)
-
-    train_split = math.floor(train_percent/100*num_files)
-    test_split = math.floor(test_percent/100*num_files)
-
-    for phase,(start, end) in zip(['train','test'],[(0,train_split),(num_files-test_split,num_files)]):
-        
-        total_duration=0
-        total_clips=0
-        
-        if use_genders!='None':
-            male_duration = 0
-            female_duration = 0
-            male_clips = 0
-            female_clips = 0
-
-
-        for i in range(start,end):
-            fileA, _, file=get_filenames(files_list[indices[i]])
-            if librosa.get_duration(filename=os.path.join(clean_path,fileA)) < 1: #Skipping very short files
-                continue
-            if use_genders!='None' and phase!='test':
-                if annotations[file] not in use_genders:
-                    continue
+    duration_saved = {'train':0, 'test':0}
+    total_clips = {'train':0, 'test':0}
+    duration_max = {'train':train_duration_max, 'test':test_duration_max}
+    clips = train_clips+test_clips
+    phase_labels = ['train']*len(train_clips)+['test']*len(test_clips)
+    
+    for clip in zip(clips,phase_labels):
+        if librosa.get_duration(filename=os.path.join(clean_path,clip)) + duration_saved[phase] < duration_max[phase] and librosa.get_duration(filename=os.path.join(clean_path,clip))>1:
+            shutil.copyfile(os.path.join(clean_path,clip),os.path.join(data_cache,'clean',phase,clip))
+            clean_data, clean_sr = librosa.load(os.path.join(clean_path,clip), sr=None)
             
-            shutil.copyfile(os.path.join(clean_path,fileA),os.path.join(data_cache,'clean',phase,file))
-
             if codec == 'g726':
                 file_orig = os.path.join(data_cache,'clean',phase,file)
                 file_8k = os.path.join(data_cache,'noisy',phase,file[:-4]+'_8k.wav')
@@ -392,31 +376,22 @@ def fetch_with_codec(clean_path,codec,data_cache,train_percent,test_percent, use
                 file_raw_out = os.path.join(data_cache,'noisy',phase,file[:-4]+'_out.raw')
                 file_out = os.path.join(data_cache,'noisy',phase,file)
                 run(f'ffmpeg -i {file_orig} -f s16le -acodec pcm_s16le {file_raw_input}') #Convert to raw
-                run(f'codec2/build_linux/src/c2enc 3200 {file_raw_input} {file_enc}') # Encode
-                run(f'codec2/build_linux/src/c2dec 3200 {file_enc} {file_raw_out}') #Decode
+                run(f'codec2/build_linux/src/c2enc {defaults["codec2_bitrate"]} {file_raw_input} {file_enc}') # Encode
+                run(f'codec2/build_linux/src/c2dec {defaults["codec2_bitrate"]} {file_enc} {file_raw_out}') #Decode
                 run(f'ffmpeg -f s16le -ar 16k -ac 1 -i {file_raw_out} {file_out}') #Convert to wav
                 
                 os.remove(file_raw_input)
                 os.remove(file_enc)
                 os.remove(file_raw_out)
 
-            duration=librosa.get_duration(filename=os.path.join(data_cache,'clean',phase,file))
+            duration_saved[phase]=librosa.get_duration(filename=os.path.join(data_cache,'clean',phase,file))
+            total_clips[phase]+=1
             
-            total_duration+=duration
-            total_clips+=1
 
-            if use_genders!='None':
-                if annotations[file] == 'M':
-                    male_clips+=1
-                    male_duration+=duration
-                else:
-                    female_clips+=1
-                    female_duration+=duration
-
-        print(f'{total_duration} seconds ({total_clips} clips) of Audio saved to {phase}.')
-        if use_genders != 'None':
-            print(f'{male_duration} seconds ({male_clips} clips) of male Audio in {phase}.')
-            print(f'{female_duration} seconds ({female_clips} clips) of female Audio in {phase}.')
+    print(f'Saved {duration_saved['train']} seconds and {total_clips['train']} of audio to train.')
+    print(f'Saved {duration_saved['test']} seconds and {total_clips['test']} of audio to test.')
+    
+       
 
 def additive_noise(clean_path,noise_file,data_cache,train_speakers,test_speakers,train_duration_max,test_duration_max):
     noise, noise_sr = librosa.load(noise_file, sr=None)

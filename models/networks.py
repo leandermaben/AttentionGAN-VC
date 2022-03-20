@@ -588,10 +588,15 @@ class ResnetGenerator_mask(nn.Module):
         x = input*mask
         x = torch.cat([x,mask],dim=1)
         x = F.pad(x, (3, 3, 3, 3), 'reflect') # Check Padding Mode Later
+        print('#'*25)
+        print(x.size()) # [1, 1, 128, 128]
+        print(input.size())
+        print(mask.size())
         x = F.relu(self.conv1_norm(self.conv1(x)))
         x = F.relu(self.conv2_norm(self.conv2(x)))
         x = F.relu(self.conv3_norm(self.conv3(x)))
         x = self.resnet_blocks(x)
+        
         # x = self.resnet_blocks1(x)
         # x = self.resnet_blocks2(x)
         # x = self.resnet_blocks3(x)
@@ -607,8 +612,7 @@ class ResnetGenerator_mask(nn.Module):
         content = self.deconv3_content(x_content)
         image = self.tanh(content)
         image1 = image[:, 0:self.output_nc*1, :, :]
-        #print('#'*25)
-        #print(image1.size()) # [1, 1, 128, 128]
+        
         image2 = image[:, self.output_nc*1:self.output_nc*2, :, :]
         image3 = image[:, self.output_nc*2:self.output_nc*3, :, :]
         image4 = image[:, self.output_nc*3:self.output_nc*4, :, :]
@@ -639,7 +643,7 @@ class ResnetGenerator_mask(nn.Module):
         attention10_ = attention[:, 9:10, :, :]
 
         attention1 = attention1_.repeat(1, self.output_nc, 1, 1)
-        # print(attention1.size())
+        
         attention2 = attention2_.repeat(1, self.output_nc, 1, 1)
         attention3 = attention3_.repeat(1, self.output_nc, 1, 1)
         attention4 = attention4_.repeat(1, self.output_nc, 1, 1)
@@ -661,6 +665,7 @@ class ResnetGenerator_mask(nn.Module):
         output9 = image9 * attention9
         # output10 = image10 * attention10
         output10 = input * attention10
+
 
         o=output1 + output2 + output3 + output4 + output5 + output6 + output7 + output8 + output9 + output10
 

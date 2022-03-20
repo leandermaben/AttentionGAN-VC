@@ -3,7 +3,7 @@
     "audio_data_path":"/content/drive/MyDrive/NTU - Speech Augmentation/Parallel_speech_data",
     "source_sub_directories": ["clean","noisy"],
     "data_cache":"/content/AttentionGAN-VC/data_cache",
-    "sampling_rate":16000,
+    "sampling_rate":8000,
     "annotations":"/content/drive/MyDrive/NTU - Speech Augmentation/annotations.csv",
     "npy_train":"/content/drive/MyDrive/NTU - Speech Augmentation/rats_train.npy",
     "npy_test":"/content/drive/MyDrive/NTU - Speech Augmentation/rats_valid.npy",

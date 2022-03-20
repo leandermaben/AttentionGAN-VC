@@ -323,10 +323,10 @@ def fetch_with_codec(clean_path,codec,data_cache,train_speakers,test_speakers,tr
     clips = train_clips+test_clips
     phase_labels = ['train']*len(train_clips)+['test']*len(test_clips)
 
-    for clip in zip(clips,phase_labels):
-        if librosa.get_duration(filename=os.path.join(clean_path,clip)) + duration_saved[phase] < duration_max[phase] and librosa.get_duration(filename=os.path.join(clean_path,clip))>1:
-            shutil.copyfile(os.path.join(clean_path,clip),os.path.join(data_cache,'clean',phase,clip))
-            clean_data, clean_sr = librosa.load(os.path.join(clean_path,clip), sr=None)
+    for file, phase in zip(clips,phase_labels):
+        if librosa.get_duration(filename=os.path.join(clean_path,file)) + duration_saved[phase] < duration_max[phase] and librosa.get_duration(filename=os.path.join(clean_path,file))>1:
+            shutil.copyfile(os.path.join(clean_path,file),os.path.join(data_cache,'clean',phase,file))
+            clean_data, clean_sr = librosa.load(os.path.join(clean_path,file), sr=None)
             
             if codec == 'g726':
                 file_orig = os.path.join(data_cache,'clean',phase,file)
@@ -384,12 +384,12 @@ def fetch_with_codec(clean_path,codec,data_cache,train_speakers,test_speakers,tr
                 os.remove(file_enc)
                 os.remove(file_raw_out)
 
-            duration_saved[phase]=librosa.get_duration(filename=os.path.join(data_cache,'clean',phase,file))
+            duration_saved[phase]+=librosa.get_duration(filename=os.path.join(data_cache,'clean',phase,file))
             total_clips[phase]+=1
             
 
-    print(f'Saved {duration_saved['train']} seconds and {total_clips['train']} of audio to train.')
-    print(f'Saved {duration_saved['test']} seconds and {total_clips['test']} of audio to test.')
+    print(f"Saved {duration_saved['train']} seconds and {total_clips['train']} clips of audio to train.")
+    print(f"Saved {duration_saved['test']} seconds and {total_clips['test']} clips of audio to test.")
     
        
 

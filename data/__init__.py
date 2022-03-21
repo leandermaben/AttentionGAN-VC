@@ -91,3 +91,10 @@ class CustomDatasetDataLoader():
             if i * self.opt.batch_size >= self.opt.max_dataset_size:
                 break
             yield data
+
+    def get_A_len(self):
+        return self.dataset.get_A_len()
+    
+    def get_B_len(self):
+        return self.dataset.get_B_len()
+

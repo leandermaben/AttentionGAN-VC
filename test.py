@@ -37,10 +37,12 @@ from PIL import Image
 from util.util import denorm_and_numpy, getTimeSeries
 import soundfile as sf
 import numpy as np
+import json
 
+with open('defaults.json','r') as f:
+    defaults = json.load(f)
 
-
-def save_audio(opt, visuals_list, img_path, use_phase=False):
+def save_audio(opt, visuals_list, img_path, use_phase=False, label='fakeA'):
 
     """
     Borrowed from https://github.com/shashankshirol/GeneratingNoisySpeechData
@@ -53,7 +55,7 @@ def save_audio(opt, visuals_list, img_path, use_phase=False):
     short_path = ntpath.basename(img_path[0])
     name = os.path.splitext(short_path)[0]
 
-    label = "fake_B"  # Concerned with only the fake generated; ignoring other labels
+    
 
     file_name = '%s/%s.wav' % (label, name)
     os.makedirs(os.path.join(img_dir, label), exist_ok=True)
@@ -62,7 +64,7 @@ def save_audio(opt, visuals_list, img_path, use_phase=False):
     flag_first = True
 
     for visual in visuals_list:
-        im_data = visual["fake_B"] #Obtaining the generated Output
+        im_data = visual[label] #Obtaining the generated Output
         im = denorm_and_numpy(im_data) #De-Normalizing the output tensor to reconstruct the spectrogram
 
         #Resizing the output to 129x128 size (original splits)
@@ -71,8 +73,8 @@ def save_audio(opt, visuals_list, img_path, use_phase=False):
         if use_phase:
             im_mag = Image.fromarray(im[:,:,0])
             im_phase = Image.fromarray(im[:,:,1])
-            im_mag = im_mag.resize((128, 129), Image.LANCZOS)
-            im_phase = im_phase.resize((128, 129), Image.LANCZOS)
+            im_mag = im_mag.resize((defaults["fix_w"], defaults["n_fft"]//2+1), Image.LANCZOS)
+            im_phase = im_phase.resize((defaults["fix_w"], defaults["n_fft"]//2+1), Image.LANCZOS)
             im_mag = np.asarray(im_mag).astype(np.float)
             im_phase = np.asarray(im_phase).astype(np.float)
             if(flag_first):
@@ -84,7 +86,7 @@ def save_audio(opt, visuals_list, img_path, use_phase=False):
                 phase_spec = np.concatenate((phase_spec, im_phase), axis=1) #concatenating specs to obtain original.
         else:
             im = Image.fromarray(im)
-            im = im.resize((128, 129), Image.LANCZOS)
+            im = im.resize((defaults["fix_w"], defaults["n_fft"]//2+1), Image.LANCZOS)
             im = np.asarray(im).astype(np.float)
 
             if(flag_first):
@@ -128,7 +130,10 @@ if __name__ == '__main__':
     """
     Borrowed from https://github.com/shashankshirol/GeneratingNoisySpeechData
     """
-    ds_len = len(dataset)
+
+    ## A -> B
+
+    ds_len = dataset.get_A_len()
     idx = 0
     datas = []
     for i, data in enumerate(dataset):
@@ -153,6 +158,39 @@ if __name__ == '__main__':
             comps_processed += 1
 
         print("saving: ", img_path[0])
-        save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase)
+        save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='fake_B')
+        save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='rec_A')
+        idx += 1
+    
+    ## B -> A
+
+    ds_len = dataset.get_B_len()
+    idx = 0
+    datas = []
+    for i, data in enumerate(dataset):
+        datas.append(data)
+    while idx < ds_len:
+
+        model.set_input(datas[idx])
+        model.test()
+        visuals = model.get_current_visuals()
+        img_path = datas[idx]['B_paths']
+        print(img_path)
+        visuals_list = [visuals]
+        num_comps = datas[idx]["B_comps"]
+        print(num_comps)
+        comps_processed = 1
+
+        while(comps_processed < num_comps):
+            idx += 1
+            model.set_input(datas[idx])
+            model.test()
+            visuals = model.get_current_visuals()
+            img_path = datas[idx]["B_paths"]
+            visuals_list.append(visuals)
+            comps_processed += 1
+
+        print("saving: ", img_path[0])
+        save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='fake_A')
         idx += 1
         

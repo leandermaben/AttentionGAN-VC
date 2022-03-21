@@ -73,10 +73,11 @@ def get_params(opt, size):
     new_h = h
     new_w = w
     if opt.preprocess == 'resize_and_crop':
-        new_h = new_w = opt.load_size
+        new_h = opt.load_size_h
+        new_w = opt.load_size_w
     elif opt.preprocess == 'scale_width_and_crop':
-        new_w = opt.load_size
-        new_h = opt.load_size * h // w
+        new_w = opt.load_size_w
+        new_h = opt.load_size_w * h // w
 
     x = random.randint(0, np.maximum(0, new_w - opt.crop_size))
     y = random.randint(0, np.maximum(0, new_h - opt.crop_size))
@@ -91,10 +92,10 @@ def get_transform(opt, params=None, grayscale=False, method=Image.BICUBIC, conve
     if grayscale:
         transform_list.append(transforms.Grayscale(1))
     if 'resize' in opt.preprocess:
-        osize = (opt.load_size, opt.load_size)
+        osize = (opt.load_size_w, opt.load_size_h)
         transform_list.append(CustResize(osize))
     elif 'scale_width' in opt.preprocess:
-        transform_list.append(transforms.Lambda(lambda img: __scale_width(img, opt.load_size, method)))
+        transform_list.append(transforms.Lambda(lambda img: __scale_width(img, opt.load_size_w, method)))
 
     if 'crop' in opt.preprocess:
         if params is None:

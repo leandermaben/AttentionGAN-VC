@@ -122,7 +122,7 @@ class AudioDataset(BaseDataset):
         parser.add_argument('--class_ids', dest='class_ids', type=str, default=['clean','noisy'], help='class IDS of the two domains.')
         parser.add_argument('--spec_power', dest='spec_power', type=float, default=1.0, help='Number to raise spectrogram by.')
         parser.add_argument('--energy', dest='energy', type=float, default=1.0, help='to modify the energy/amplitude of the audio-signals')
-        parser.set_defaults(preprocess='resize',load_size=128, crop_size=128)
+        parser.set_defaults(preprocess='resize',load_size_h=defaults["load_size_h"], load_size_w=defaults["load_size_w"], crop_size=min(defaults["load_size_h"],defaults["load_size_w"])) #TODO Change crop to h and w
 
         return parser
 
@@ -219,7 +219,7 @@ class AudioDataset(BaseDataset):
             A_transform = get_transform(self.opt, transform_params_A, grayscale= True)
             A = A_transform(A_img)
 
-        if self.data_load_order == 'aligned':   # make sure index is within then range
+        if self.data_load_order == 'aligned' or self.opt.serial_batches:   # make sure index is within then range
             index_B = index % self.noisy_specs_len
         else:   # randomize the index for domain B to avoid fixed pairs.
             index_B = random.randint(0, self.noisy_specs_len - 1)
@@ -248,8 +248,13 @@ class AudioDataset(BaseDataset):
                 B_mask = self.get_mask(B)
                 return {'A': A, 'B': B, 'A_mask':A_mask, 'B_mask':B_mask, 'A_paths': A_path, 'B_paths': B_path, 'A_comps': self.clean_comp_dict[A_path]}
             else:
-                return {'A': A, 'B': B, 'A_paths': A_path, 'B_paths': B_path, 'A_comps': self.clean_comp_dict[A_path]}
+                return {'A': A, 'B': B, 'A_paths': A_path, 'B_paths': B_path, 'A_comps': self.clean_comp_dict[A_path], 'B_comps':self.noisy_comp_dict[B_path]}
 
+    def get_A_len(self):
+        return self.clean_specs_len
+
+    def get_B_len(self):
+        return self.noisy_specs_len
 
     def __len__(self):
         return max(self.clean_specs_len,self.noisy_specs_len)

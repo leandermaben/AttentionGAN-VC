@@ -136,7 +136,7 @@ def extract(filename, sr=None, energy = 1.0, hop_length = 64, state = None):
     data = pyln.normalize.loudness(data, loudness, target_loudness = STANDARD_LUFS)
     ##################################################
 
-    comp_spec = librosa.stft(data, n_fft=256, hop_length = hop_length, window='hamming')
+    comp_spec = librosa.stft(data, n_fft=defaults["n_fft"], hop_length = hop_length, window='hamming')
 
     mag_spec, phase = librosa.magphase(comp_spec)
 
@@ -165,10 +165,15 @@ def getTimeSeries(im_mag, im_phase, img_path, pow, energy = 1.0, state = None, u
     mag_spec, phase, sr = extract(img_path[0], defaults["sampling_rate"], energy, state = state)
     log_spec = power_to_db(mag_spec)
 
+    print('*'*25)
+
+    print(img_path[0])
+    print(librosa.get_duration(filename=img_path[0]))
+
     h, w = mag_spec.shape
     
     ######Ignoring padding
-    fix_w = 128
+    fix_w = defaults["fix_w"]
     mod_fix_w = w % fix_w
     extra_cols = 0
     if(mod_fix_w != 0):

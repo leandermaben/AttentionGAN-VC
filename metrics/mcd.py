@@ -23,7 +23,7 @@ def mfcc(audio):
 
     Created by Leander Maben.
     """
-    mcc = librosa.feature.mfcc(test)
+    mcc = librosa.feature.mfcc(audio)
     return mcc
 
 def safe_log(x, eps=1e-5):
@@ -75,9 +75,17 @@ def normalize(sig1, sig2):
 
 def compute_mcd(file1,file2):
 
-    aud1, _ = librosa.load(file1, sr=None)
-    aud2, _ = librosa.load(file2, sr=None)
-    mcc1 ,mcc2 = mfcc(aud1), mfcc(aud2)
+
+    _, aud_1 = wav.read(file1)
+    _, aud_2 = wav.read(file2)
+    if(np.sum(aud_1.astype(float)**2) > np.sum(aud_2.astype(float)**2)):
+        file1, file2 = file2, file1
+        
+    data1, data2, sr = normalize(sig1=file1, sig2=file2)
+
+    data1, data2 = time_and_energy_align(data1,data2, sr)
+
+    mcc1 ,mcc2 = mfcc(data1)[1:,:], mfcc(data2)[1:,:]
 
     K = 10 / np.log(10) * np.sqrt(2)
 
@@ -85,6 +93,20 @@ def compute_mcd(file1,file2):
 
     return mcd
 
+def AddNoiseFloor(data):
+    frameSz = defaults["fix_w"]
+    noiseFloor = (np.random.rand(frameSz) - 0.5) * 1e-5
+    numFrame = math.floor(len(data)/frameSz)
+    st = 0
+    et = frameSz-1
+
+    for i in range(numFrame):
+        if(np.sum(np.abs(data[st:et+1])) < 1e-5):
+            data[st:et+1] = data[st:et+1] + noiseFloor
+        st = et + 1
+        et += frameSz
+
+    return data
 
 def time_and_energy_align(data1, data2, sr):
     nfft = defaults["nfft"]

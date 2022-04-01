@@ -588,10 +588,6 @@ class ResnetGenerator_mask(nn.Module):
         x = input*mask
         x = torch.cat([x,mask],dim=1)
         x = F.pad(x, (3, 3, 3, 3), 'reflect') # Check Padding Mode Later
-        print('#'*25)
-        print(x.size()) # [1, 1, 128, 128]
-        print(input.size())
-        print(mask.size())
         x = F.relu(self.conv1_norm(self.conv1(x)))
         x = F.relu(self.conv2_norm(self.conv2(x)))
         x = F.relu(self.conv3_norm(self.conv3(x)))

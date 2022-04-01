@@ -395,8 +395,11 @@ def fetch_with_codec(clean_path,codec,data_cache,train_speakers,test_speakers,tr
 
 def additive_noise(clean_path,noise_file,data_cache,train_speakers,test_speakers,train_duration_max,test_duration_max):
     noise, noise_sr = librosa.load(noise_file, sr=None)
-    noise_train = noise[0:noise.shape[0]//2]
-    noise_test = noise[noise.shape[0]//2:]
+    # noise_train = noise[0:noise.shape[0]//2]
+    # noise_test = noise[noise.shape[0]//2:]
+
+    noise_train = noise
+    noise_test = noise
 
     train_clips = []
     test_clips = []

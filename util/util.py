@@ -128,6 +128,8 @@ def extract(filename, sr=None, energy = 1.0, hop_length = 64, state = None):
             n_fft: length of the windowed signal after padding with zeros.
     """
     data, sr = librosa.load(filename, sr=sr)
+    print('In extract')
+    print(data.shape)
     data *= energy
 
     ##Normalizing to standard -23.0 LuFS
@@ -165,13 +167,8 @@ def getTimeSeries(im_mag, im_phase, img_path, pow, energy = 1.0, state = None, u
     mag_spec, phase, sr = extract(img_path[0], defaults["sampling_rate"], energy, state = state)
     log_spec = power_to_db(mag_spec)
 
-    print('*'*25)
-
-    print(img_path[0])
-    print(librosa.get_duration(filename=img_path[0]))
-
     h, w = mag_spec.shape
-    
+    print(f'Initial: {im_mag.shape}')
     ######Ignoring padding
     fix_w = defaults["fix_w"]
     mod_fix_w = w % fix_w
@@ -211,7 +208,7 @@ def reconstruct(mag_spec, phase):
             phase:  Phase info. of a spectrogram
     """
     temp = mag_spec * np.exp(phase * 1j)
-    data_out = librosa.istft(temp)
+    data_out = librosa.istft(temp, hop_length=64)
     return data_out
 
 # to convert the spectrogram ( an 2d-array of real numbers) to a storable form (0-255)

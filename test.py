@@ -98,6 +98,8 @@ def save_audio(opt, visuals_list, img_path, use_phase=False, label='fakeA'):
 
 
     data, sr = getTimeSeries(mag_spec, phase_spec, img_path, opt.spec_power, opt.energy, state = opt.phase, use_phase=use_phase)
+    print('Output')
+    print(data.shape)
     sf.write(save_path, data, sr)
 
     return

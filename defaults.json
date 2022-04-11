@@ -23,7 +23,7 @@
     "clean_additive_weight":0.5,
     "noisy_additive_weight":0.5,
     "test_source":"/content/AttentionGAN-VC/data_cache/noisy/test",
-    "test_results":"/content/AttentionGAN-VC/results/attention_rats_ted_nocyclenomask/test_latest/audios/fake_B",
+    "test_results":"/content/AttentionGAN-VC/results/attention_rats_ted_actual_nocyclenomask/test_latest/audios/fake_B",
     "use_gender_test":false,
     "nfft":256,
     "n_fft":1024,

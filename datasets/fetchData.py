@@ -371,15 +371,18 @@ def fetch_with_codec(clean_path,codec,data_cache,train_speakers,test_speakers,tr
                     run('make')
                     os.chdir(cwd)
                 file_orig = os.path.join(data_cache,'clean',phase,file)
+                file_8k = os.path.join(data_cache,'noisy',phase,file[:-4]+'_8k.wav')
                 file_raw_input = os.path.join(data_cache,'noisy',phase,file[:-4]+'_in.raw')
                 file_enc = os.path.join(data_cache,'noisy',phase,file[:-4]+'_enc.bit')
                 file_raw_out = os.path.join(data_cache,'noisy',phase,file[:-4]+'_out.raw')
                 file_out = os.path.join(data_cache,'noisy',phase,file)
-                run(f'ffmpeg -i {file_orig} -f s16le -acodec pcm_s16le {file_raw_input}') #Convert to raw
+                run(f'ffmpeg -hide_banner -loglevel error -i {file_orig} -ar 8k -y {file_8k}')
+                run(f'ffmpeg -i {file_8k} -f s16le -acodec pcm_s16le {file_raw_input}') #Convert to raw
                 run(f'codec2/build_linux/src/c2enc {defaults["codec2_bitrate"]} {file_raw_input} {file_enc}') # Encode
                 run(f'codec2/build_linux/src/c2dec {defaults["codec2_bitrate"]} {file_enc} {file_raw_out}') #Decode
-                run(f'ffmpeg -f s16le -ar 16k -ac 1 -i {file_raw_out} {file_out}') #Convert to wav
+                run(f'ffmpeg -f s16le -ar 8k -ac 1 -i {file_raw_out} {file_out}') #Convert to wav
                 
+                os.remove(file_8k)
                 os.remove(file_raw_input)
                 os.remove(file_enc)
                 os.remove(file_raw_out)

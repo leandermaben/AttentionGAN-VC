@@ -128,8 +128,6 @@ def extract(filename, sr=None, energy = 1.0, hop_length = 64, state = None):
             n_fft: length of the windowed signal after padding with zeros.
     """
     data, sr = librosa.load(filename, sr=sr)
-    print('In extract')
-    print(data.shape)
     data *= energy
 
     ##Normalizing to standard -23.0 LuFS

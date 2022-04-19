@@ -61,6 +61,7 @@ class BaseOptions():
         parser.add_argument('--verbose', action='store_true', help='if specified, print more debugging information')
         parser.add_argument('--suffix', default='', type=str, help='customized suffix: opt.name = opt.name + suffix: e.g., {model}_{netG}_size{load_size}')
         parser.add_argument('--saveDisk', action='store_true', help='save disk memory during testing time')
+        parser.add_argument('--single_direction', action='store_true', help='Only clean data is present.Use only for test.')
     
         self.initialized = True
         return parser

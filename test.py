@@ -164,35 +164,35 @@ if __name__ == '__main__':
         save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='rec_A')
         idx += 1
     
-    ## B -> A
+    # ## B -> A
 
-    ds_len = dataset.get_B_len()
-    idx = 0
-    datas = []
-    for i, data in enumerate(dataset):
-        datas.append(data)
-    while idx < ds_len:
+    # ds_len = dataset.get_B_len()
+    # idx = 0
+    # datas = []
+    # for i, data in enumerate(dataset):
+    #     datas.append(data)
+    # while idx < ds_len:
 
-        model.set_input(datas[idx])
-        model.test()
-        visuals = model.get_current_visuals()
-        img_path = datas[idx]['B_paths']
-        print(img_path)
-        visuals_list = [visuals]
-        num_comps = datas[idx]["B_comps"]
-        print(num_comps)
-        comps_processed = 1
+    #     model.set_input(datas[idx])
+    #     model.test()
+    #     visuals = model.get_current_visuals()
+    #     img_path = datas[idx]['B_paths']
+    #     print(img_path)
+    #     visuals_list = [visuals]
+    #     num_comps = datas[idx]["B_comps"]
+    #     print(num_comps)
+    #     comps_processed = 1
 
-        while(comps_processed < num_comps):
-            idx += 1
-            model.set_input(datas[idx])
-            model.test()
-            visuals = model.get_current_visuals()
-            img_path = datas[idx]["B_paths"]
-            visuals_list.append(visuals)
-            comps_processed += 1
+    #     while(comps_processed < num_comps):
+    #         idx += 1
+    #         model.set_input(datas[idx])
+    #         model.test()
+    #         visuals = model.get_current_visuals()
+    #         img_path = datas[idx]["B_paths"]
+    #         visuals_list.append(visuals)
+    #         comps_processed += 1
 
-        print("saving: ", img_path[0])
-        save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='fake_A')
-        idx += 1
+    #     print("saving: ", img_path[0])
+    #     save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='fake_A')
+    #     idx += 1
         

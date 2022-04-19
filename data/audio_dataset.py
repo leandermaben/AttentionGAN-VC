@@ -129,9 +129,12 @@ class AudioDataset(BaseDataset):
     def __init__(self,opt):
         BaseDataset.__init__(self,opt)
         self.dir_A = os.path.join(opt.dataroot,opt.class_ids[0],opt.phase)
-        self.dir_B = os.path.join(opt.dataroot,opt.class_ids[1],opt.phase)
         self.A_paths = sorted(make_dataset_audio(self.dir_A, opt.max_dataset_size))
-        self.B_paths = sorted(make_dataset_audio(self.dir_B, opt.max_dataset_size))
+        
+        if not opt.single_direction:
+            self.dir_B = os.path.join(opt.dataroot,opt.class_ids[1],opt.phase)
+            self.B_paths = sorted(make_dataset_audio(self.dir_B, opt.max_dataset_size))
+
 
         self.opt=opt
         self.spec_power = opt.spec_power
@@ -178,19 +181,24 @@ class AudioDataset(BaseDataset):
         assert self.clean_specs_len == len(self.clean_spec_paths)
 
         del self.no_comps_clean
+        if not self.opt.single_direction:
+            self.noisy_specs = Parallel(n_jobs=self.num_cores, prefer="threads")(delayed(processInput)(i, self.spec_power, self.phase, self.channels, self.opt.use_phase) for i in self.B_paths)
+            self.no_comps_noisy = Parallel(n_jobs=self.num_cores, prefer="threads")(delayed(countComps)(i) for i in self.noisy_specs)
 
-        self.noisy_specs = Parallel(n_jobs=self.num_cores, prefer="threads")(delayed(processInput)(i, self.spec_power, self.phase, self.channels, self.opt.use_phase) for i in self.B_paths)
-        self.no_comps_noisy = Parallel(n_jobs=self.num_cores, prefer="threads")(delayed(countComps)(i) for i in self.noisy_specs)
-
-        self.noisy_spec_paths = []
-        self.noisy_comp_dict = OrderedDict()
-        for nameB, countB in zip(self.B_paths, self.no_comps_noisy):
-            self.noisy_spec_paths += [nameB] * countB
-            self.noisy_comp_dict[nameB] = countB
-        self.noisy_specs = list(chain.from_iterable(self.noisy_specs))
-        self.noisy_specs_len = len(self.noisy_specs)
-        assert self.noisy_specs_len == len(self.noisy_spec_paths)
-        del self.no_comps_noisy
+            self.noisy_spec_paths = []
+            self.noisy_comp_dict = OrderedDict()
+            for nameB, countB in zip(self.B_paths, self.no_comps_noisy):
+                self.noisy_spec_paths += [nameB] * countB
+                self.noisy_comp_dict[nameB] = countB
+            self.noisy_specs = list(chain.from_iterable(self.noisy_specs))
+            self.noisy_specs_len = len(self.noisy_specs)
+            assert self.noisy_specs_len == len(self.noisy_spec_paths)
+            del self.no_comps_noisy
+        else:
+            self.noisy_specs=self.clean_specs
+            self.noisy_specs_len = self.clean_specs_len
+            self.noisy_spec_paths = self.clean_spec_paths
+            self.noisy_comp_dict = self.clean_comp_dict
 
     def get_mask(self,A):
         # Generating mask (for filling in frames) if required 

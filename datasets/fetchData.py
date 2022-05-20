@@ -53,6 +53,7 @@ import pickle
 import matplotlib.pyplot as plt
 from util.util import save_pickle
 import soundfile as sf
+import glob
 import json
 
 #Loading defaults
@@ -495,6 +496,75 @@ def rats_noise(root_dir,data_cache,train_speakers,test_speakers,train_duration_m
 
     print(f'Saved {test_duration_saved} seconds of audio to test.')
 
+def transfer_timit(timit_dir,data_cache,test_speakers,train_duration_max,test_duration_max,noise_type,noise_db):
+    
+    clean_train_path = os.path.join(timit_dir,'train','clean')
+    noisy_path = os.path.join(timit_dir,'test','noisy',noise_type,f'{noise_db}dB')
+
+    print(f'Clean (Train) Path: {clean_train_path}')
+    print(f'Noisy Path: {noisy_path}')
+
+    noisy_speakers = os.listdir(noisy_path)
+
+    train_speakers_noisy = list(set(noisy_speakers)-set(test_speakers))
+    
+    print(f'Train Speakers (Noisy): {train_speakers_noisy}')
+    print(f'Test Speakers (Noisy): {test_speakers}')
+    
+    clean_clips_train_all = glob.glob(os.path.join(clean_train_path,'**/*.wav'), recursive=True)
+    noisy_clips_train_all = []
+    for speaker in train_speakers_noisy:
+        noisy_clips_train_all.extend(glob.glob(os.path.join(noisy_path,speaker,'*.wav')))
+    test_clips_all = []
+    for speaker in test_speakers:
+        for clip in os.listdir(os.path.join(noisy_path,speaker)):
+            test_clips_all.append(f'{speaker}/{clip}') #Saving only speaker/clip.wav
+
+    np.random.seed(7)
+    np.random.shuffle(clean_clips_train_all)
+    np.random.seed(8)
+    np.random.shuffle(noisy_clips_train_all)
+    np.random.seed(9)
+    np.random.shuffle(test_clips_all)
+
+    os.makedirs(os.path.join(data_cache,'clean','train'))
+    os.makedirs(os.path.join(data_cache,'clean','test'))
+    os.makedirs(os.path.join(data_cache,'noisy','train'))
+    os.makedirs(os.path.join(data_cache,'noisy','test'))
+
+    clean_train_duration_saved = 0
+    for clip in clean_clips_train_all:
+        basename = os.path.basename(clip)
+        if librosa.get_duration(filename=clip) + clean_train_duration_saved < train_duration_max and librosa.get_duration(filename=clip)>1:
+            shutil.copyfile(clip,os.path.join(data_cache,'clean','train',basename))
+            clean_train_duration_saved+=librosa.get_duration(filename=clip)
+
+    print(f'Saved {clean_train_duration_saved} seconds of clean audio to train.')
+
+    noisy_train_duration_saved = 0
+    for clip in noisy_clips_train_all:
+        basename = os.path.basename(clip)
+        if librosa.get_duration(filename=clip) + noisy_train_duration_saved < train_duration_max and librosa.get_duration(filename=clip)>1:
+            shutil.copyfile(clip,os.path.join(data_cache,'noisy','train',basename))
+            noisy_train_duration_saved+=librosa.get_duration(filename=clip)
+
+    print(f'Saved {noisy_train_duration_saved} seconds of noisy audio to train.')
+
+
+    test_duration_saved = 0
+    for clip in test_clips_all:
+        basename = os.path.basename(clip)
+        if librosa.get_duration(filename=os.path.join(timit_dir,'test','clean',clip)) + test_duration_saved < test_duration_max and librosa.get_duration(filename=os.path.join(timit_dir,'test','clean',clip))>1:
+            shutil.copyfile(os.path.join(timit_dir,'test','clean',clip),os.path.join(data_cache,'clean','test',basename))
+            shutil.copyfile(os.path.join(timit_dir,'test','noisy',clip),os.path.join(data_cache,'noisy','test',basename))
+            test_duration_saved+=librosa.get_duration(filename=os.path.join(timit_dir,'test','clean',clip))
+
+    print(f'Saved {test_duration_saved} seconds of audio to test.')
+
+
+
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Prepare Data')
@@ -506,7 +576,7 @@ if __name__ == '__main__':
     parser.add_argument('--test_percent', dest='test_percent', type=int, default=defaults["test_percent"], help="Percentage for test split.Ignored for --transfer_mode npy or additive_noise.")
     parser.add_argument('--size_multiple', dest='size_multiple', type=int, default=defaults["size_multiple"], help="Required Factor of Dimensions ONLY if spectrogram mode of tranfer is used")
     parser.add_argument('--sampling_rate', dest='sampling_rate', type=int, default=defaults["sampling_rate"], help="Sampling rate for audio. Use if tranfer_mode is spectrogram or npy")
-    parser.add_argument('--transfer_mode', dest='transfer_mode', type=str, choices=['rats','spectrogram','npy','codec','additive_noise'], default=defaults["transfer_mode"], help='Transfer files as raw audio ,converted spectrogram, from npy files, using codecor adding noise.')
+    parser.add_argument('--transfer_mode', dest='transfer_mode', type=str, choices=['rats','spectrogram','npy','codec','additive_noise','timit'], default=defaults["transfer_mode"], help='Transfer files as raw audio ,converted spectrogram, from npy files, using codecor adding noise.')
     parser.add_argument('--use_genders', dest='use_genders', type=str, default=defaults["use_genders"], help='Genders to include in train set. Pass None if you do not want to check genders.Ignored for --transfer_mode [spectrogram|npy]')
     parser.add_argument('--npy_train_source', dest='npy_train_source', type=str, default=defaults["npy_train"], help='Path where npy train set is present.')
     parser.add_argument('--npy_test_source', dest='npy_test_source', type=str, default=defaults["npy_test"], help='Path where npy test set is present.')
@@ -532,3 +602,5 @@ if __name__ == '__main__':
         fetch_with_codec(args.clean_path, args.codec_name, args.data_cache, args.train_speakers, args.test_speakers, args.train_duration_max, args.test_duration_max)
     elif args.transfer_mode == 'additive_noise':
         additive_noise(args.clean_path, args.noise_file, args.data_cache, args.train_speakers, args.test_speakers, args.train_duration_max, args.test_duration_max)
+    elif args.transfer_mode == 'timit':
+        transfer_timit(defaults["timit_dir"],args.data_cache, defaults["timit_test_speakers"], args.train_duration_max, args.test_duration_max, defaults["timit_noise_type"],defaults["timit_noise_dB"])

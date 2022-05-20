@@ -556,7 +556,7 @@ def transfer_timit(timit_dir,data_cache,test_speakers,train_duration_max,test_du
         basename = os.path.basename(clip)
         if librosa.get_duration(filename=os.path.join(timit_dir,'test','clean',clip)) + test_duration_saved < test_duration_max and librosa.get_duration(filename=os.path.join(timit_dir,'test','clean',clip))>1:
             shutil.copyfile(os.path.join(timit_dir,'test','clean',clip),os.path.join(data_cache,'clean','test',basename))
-            shutil.copyfile(os.path.join(timit_dir,'test','noisy',clip),os.path.join(data_cache,'noisy','test',basename))
+            shutil.copyfile(os.path.join(noisy_path,clip),os.path.join(data_cache,'noisy','test',basename))
             test_duration_saved+=librosa.get_duration(filename=os.path.join(timit_dir,'test','clean',clip))
 
     print(f'Saved {test_duration_saved} seconds of audio to test.')

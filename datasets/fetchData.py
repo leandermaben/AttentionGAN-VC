@@ -587,6 +587,7 @@ if __name__ == '__main__':
     parser.add_argument('--test_speakers', dest='test_speakers', nargs='+' ,type=str, default=defaults["test_speakers"], help="Ids of speakers to be used in test set. Use only if --transfer_mode is additive_noise.")
     parser.add_argument('--train_duration_max', dest='train_duration_max' ,type=int, default=defaults["train_duration_max"], help="Max duration of train dataset. Use only if --transfer_mode is additive_noise.")
     parser.add_argument('--test_duration_max', dest='test_duration_max' ,type=int, default=defaults["test_duration_max"], help="Max duration of test dataset. Use only if --transfer_mode is additive_noise.")
+    parser.add_argument('--noise_dB', dest='noise_dB' ,type=int, default=defaults["timit_noise_dB"], help="SNR for TIMIT noise dataset. Use only if --transfer_mode is timit.")
     args = parser.parse_args()
 
     for arg in vars(args):
@@ -603,4 +604,4 @@ if __name__ == '__main__':
     elif args.transfer_mode == 'additive_noise':
         additive_noise(args.clean_path, args.noise_file, args.data_cache, args.train_speakers, args.test_speakers, args.train_duration_max, args.test_duration_max)
     elif args.transfer_mode == 'timit':
-        transfer_timit(defaults["timit_dir"],args.data_cache, defaults["timit_test_speakers"], args.train_duration_max, args.test_duration_max, defaults["timit_noise_type"],defaults["timit_noise_dB"])
+        transfer_timit(defaults["timit_dir"],args.data_cache, defaults["timit_test_speakers"], args.train_duration_max, args.test_duration_max, defaults["timit_noise_type"],args.noise_dB)

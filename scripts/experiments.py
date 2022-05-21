@@ -11,13 +11,37 @@ def run(command):
     if exit_status > 0:
         exit(1)
 
-def log(path,name,comment,avg_lsd,std_lsd,avg_mssl,std_mssl,male_avg_lsd,male_std_lsd,male_avg_mssl,male_std_mssl,female_avg_lsd,female_std_lsd,female_avg_mssl,female_std_mssl):
+# def log(path,name,comment,avg_lsd,std_lsd,avg_mssl,std_mssl,male_avg_lsd,male_std_lsd,male_avg_mssl,male_std_mssl,female_avg_lsd,female_std_lsd,female_avg_mssl,female_std_mssl):
+#     """
+#     Created by Leander Maben.
+#     """
+#     df=pd.read_csv(path)
+#     df.loc[len(df.index)] = {'name':name,'comment':comment,'avg_lsd':avg_lsd,'std_lsd':std_lsd,'avg_mssl':avg_mssl,'std_mssl':std_mssl,'male_avg_lsd':male_avg_lsd,'male_std_lsd':male_std_lsd,'male_avg_mssl':male_avg_mssl,'male_std_mssl':male_std_mssl,'female_avg_lsd':female_avg_lsd,'female_std_lsd':female_std_lsd,'female_avg_mssl':female_avg_mssl,'female_std_mssl':female_std_mssl}
+#     df.to_csv(path,index=False)
+
+def log(path,name,comment,avg_lsd,std_lsd,avg_mssl,std_mssl):
     """
     Created by Leander Maben.
     """
     df=pd.read_csv(path)
-    df.loc[len(df.index)] = {'name':name,'comment':comment,'avg_lsd':avg_lsd,'std_lsd':std_lsd,'avg_mssl':avg_mssl,'std_mssl':std_mssl,'male_avg_lsd':male_avg_lsd,'male_std_lsd':male_std_lsd,'male_avg_mssl':male_avg_mssl,'male_std_mssl':male_std_mssl,'female_avg_lsd':female_avg_lsd,'female_std_lsd':female_std_lsd,'female_avg_mssl':female_avg_mssl,'female_std_mssl':female_std_mssl}
+    df.loc[len(df.index)] = {'name':name,'comment':comment,'avg_lsd':avg_lsd,'std_lsd':std_lsd,'avg_mssl':avg_mssl,'std_mssl':std_mssl}
     df.to_csv(path,index=False)
+
+def timit_exp1(names,csv_path,noise_dBs, data_cache='/content/AttentionGAN-VC/data_cache',results_dir='/content/AttentionGAN-VC/results'):
+     for name, noise_dB in zip(names,noise_dBs):
+        print('#'*25)
+        print(f'Training {name} with SNR {noise_dB}')
+
+        run(f'python datasets/fetchData.py --tranfer_mode timit --noise_dB {noise_dB}')
+        run(f'python train.py --dataroot data_cache --name {name} --model attention_gan --dataset_mode audio --pool_size 50 --no_dropout --norm instance --lambda_A 10 --lambda_B 10 --lambda_identity 0.5 --load_size_h 128 --load_size_w 128 --crop_size 128 --preprocess resize --batch_size 4 --niter 200 --niter_decay 0 --gpu_ids 0 --display_id 0 --display_freq 100 --print_freq 100 --input_nc 2 --output_nc 2 --use_cycled_discriminators --use_mask --max_mask_len 50 --use_phase --checkpoints_dir /content/drive/MyDrive/TASLP/EXP1/checkpoints')
+        run(f'python test.py --dataroot data_cache --name {name} --model attention_gan --dataset_mode audio --norm instance --phase test --no_dropout --load_size_h 128 --load_size_w 128 --crop_size 128 --batch_size 1 --gpu_ids 0 --input_nc 2 --output_nc 2 --use_mask --use_phase --checkpoints_dir /content/drive/MyDrive/TASLP/EXP1/checkpoints')
+        avg_lsd,std_lsd= lsd(os.path.join(data_cache,'noisy','test'),os.path.join(results_dir,name,'test_latest','audios','fake_B'),use_gender=False)
+        avg_mssl,std_mssl = mssl(os.path.join(data_cache,'noisy','test'),os.path.join(results_dir,name,'test_latest','audios','fake_B'),use_gender=False)
+        log(csv_path, name,f'Training {name} for EXP1 with SNR {noise_dB} for 200 epochs with cycled_disc, phase and mask. LambdaA & B 10 , lambda_identity 0.5',avg_lsd,std_lsd,avg_mssl,std_mssl)
+    
+        shutil.rmtree(data_cache)
+        print(f'Finished experiment with {name}')
+        print('#'*25)
 
 ##TODO: Modify functions to handle male,female,std dev
 
@@ -138,16 +162,19 @@ def run_eval(checkpoints_dir='/content/Pix2Pix-VC/checkpoints', data_cache='/con
 
 
 if __name__ == '__main__':
-    csv_path = '/content/drive/MyDrive/NTU - Speech Augmentation/att.csv'
+    csv_path = '/content/drive/MyDrive/TASLP/EXP1/logs.csv'
     if not os.path.exists(csv_path):
-        cols=['name','comment','avg_lsd','std_lsd','avg_mssl','std_mssl','male_avg_lsd','male_std_lsd','male_avg_mssl','male_std_mssl','female_avg_lsd','female_std_lsd','female_avg_mssl','female_std_mssl']
+        cols=['name','comment','avg_lsd','std_lsd','avg_mssl','std_mssl']
         df=pd.DataFrame(columns=cols)
         df.to_csv(csv_path,index=False)
     
+    noise_dBs = [0,-3,-6]
+    timit_exp1([f'AttentionGAN_phase_mask_cycdisc_{i}dB' for i in noise_dBs],csv_path,noise_dBs)
+    
     #log(csv_path,'Dummy', "Logging default parameters used - 200 lambda_L1, 15% test size",0,0)
 
-    train_percents =[5,10]
-    vary_data(train_percents,15,[f'att_noisy_cyc_disc_lambda_cyc_5_phase_{i}' for i in train_percents], csv_path,lambda_cyc=5, use_phase=True)
+    # train_percents =[5,10]
+    # vary_data(train_percents,15,[f'att_noisy_cyc_disc_lambda_cyc_5_phase_{i}' for i in train_percents], csv_path,lambda_cyc=5, use_phase=True)
 
     # train_percents =[5,10,25]
     # vary_data(train_percents,15,[f'att_noisy_cyc_disc_lambda_cyc_1_mask_{i}' for i in train_percents], csv_path,lambda_cyc=1, use_mask=True)

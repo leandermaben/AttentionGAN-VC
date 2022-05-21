@@ -32,7 +32,7 @@ def timit_exp1(names,csv_path,noise_dBs, data_cache='/content/AttentionGAN-VC/da
         print('#'*25)
         print(f'Training {name} with SNR {noise_dB}')
 
-        run(f'python datasets/fetchData.py --tranfer_mode timit --noise_dB {noise_dB}')
+        run(f'python datasets/fetchData.py --transfer_mode timit --noise_dB {noise_dB}')
         run(f'python train.py --dataroot data_cache --name {name} --model attention_gan --dataset_mode audio --pool_size 50 --no_dropout --norm instance --lambda_A 10 --lambda_B 10 --lambda_identity 0.5 --load_size_h 128 --load_size_w 128 --crop_size 128 --preprocess resize --batch_size 4 --niter 200 --niter_decay 0 --gpu_ids 0 --display_id 0 --display_freq 100 --print_freq 100 --input_nc 2 --output_nc 2 --use_cycled_discriminators --use_mask --max_mask_len 50 --use_phase --checkpoints_dir /content/drive/MyDrive/TASLP/EXP1/checkpoints')
         run(f'python test.py --dataroot data_cache --name {name} --model attention_gan --dataset_mode audio --norm instance --phase test --no_dropout --load_size_h 128 --load_size_w 128 --crop_size 128 --batch_size 1 --gpu_ids 0 --input_nc 2 --output_nc 2 --use_mask --use_phase --checkpoints_dir /content/drive/MyDrive/TASLP/EXP1/checkpoints')
         avg_lsd,std_lsd= lsd(os.path.join(data_cache,'noisy','test'),os.path.join(results_dir,name,'test_latest','audios','fake_B'),use_gender=False)

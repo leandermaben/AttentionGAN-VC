@@ -161,7 +161,7 @@ if __name__ == '__main__':
 
         print("saving: ", img_path[0])
         save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='fake_B')
-        save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='rec_A')
+        #save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='rec_A')
         idx += 1
     
     # ## B -> A

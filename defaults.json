@@ -17,7 +17,7 @@
     "codec2_bitrate":3200,
     "train_speakers":["fe_03_1522-02147", "fe_03_2141-01326", "fe_03_3425-00177","fe_03_1678-00558"],
     "test_speakers": ["fe_03_3720-01342"],
-    "train_duration_max":300,
+    "train_duration_max":180,
     "test_duration_max":300,
     "noise_file":"/content/drive/MyDrive/NTU - Speech Augmentation/Little_India_Singapore_Riot.wav",
     "clean_additive_weight":0.5,
@@ -40,8 +40,8 @@
     "load_size_h":128,
     "load_size_w":128,
     "load_size":128,
-    "timit_test_speakers":["MWBT0","FDHC0","MWEW0","FELC0"],
-    "timit_dir":"/content/drive/MyDrive/TIMIT_DATA",
-    "timit_noise_type":"helicopter",
+    "timit_test_speakers":["MWBT0","FDHC0","MWEW0","FELC0","FJLM0", "MTLS0", "FMGD0", "MTAS1"],
+    "timit_dir":"/content/drive/MyDrive/TIMIT_DATA_CABIN",
+    "timit_noise_type":"cabin",
     "timit_noise_dB":"0"
 }

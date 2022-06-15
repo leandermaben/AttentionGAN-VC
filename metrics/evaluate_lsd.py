@@ -273,8 +273,6 @@ def main(source_dir=defaults["test_source"],results_dir=defaults["test_results"]
         total_loss.append(lsd)
 
 
-    
-
     total_mean = np.mean(total_loss)
     total_std = np.std(total_loss)
     if use_gender:

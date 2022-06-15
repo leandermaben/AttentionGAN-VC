@@ -233,8 +233,6 @@ def main(source_dir=defaults["test_source"],results_dir=defaults["test_results"]
                 female_loss.append(loss)
         else:
             total_loss.append(loss)
-            total_mean = np.mean(total_loss)
-            total_std = np.std(total_loss)
 
     if use_gender:    
         total_loss = np.concatenate((male_loss,female_loss))
@@ -249,6 +247,8 @@ def main(source_dir=defaults["test_source"],results_dir=defaults["test_results"]
             shutil.rmtree(TEMP_CACHE)
         return total_mean, total_std, male_mean, male_std, female_mean, female_std
     else:
+        total_mean = np.mean(total_loss)
+        total_std = np.std(total_loss)
         if TEMP_CACHE!=source_dir:
             shutil.rmtree(TEMP_CACHE)
         return total_mean, total_std

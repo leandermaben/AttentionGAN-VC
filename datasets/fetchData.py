@@ -496,8 +496,9 @@ def rats_noise(root_dir,data_cache,train_speakers,test_speakers,train_duration_m
 
     print(f'Saved {test_duration_saved} seconds of audio to test.')
 
-def transfer_timit(timit_dir,data_cache,test_speakers,train_duration_max,test_duration_max,noise_type,noise_db):
-    
+def transfer_timit(timit_dir,data_cache,val_speakers,test_speakers,train_duration_max,val_duaration_max,test_duration_max,noise_type,noise_db, val_required = False):
+
+
     clean_train_path = os.path.join(timit_dir,'train','clean')
     noisy_path = os.path.join(timit_dir,'test','noisy',noise_type,f'{noise_db}dB')
 
@@ -506,15 +507,22 @@ def transfer_timit(timit_dir,data_cache,test_speakers,train_duration_max,test_du
 
     noisy_speakers = os.listdir(noisy_path)
 
-    train_speakers_noisy = list(set(noisy_speakers)-set(test_speakers))
+    train_speakers_noisy = list(set(noisy_speakers)-set(test_speakers)-set(val_speakers))
     
     print(f'Train Speakers (Noisy): {train_speakers_noisy}')
+    print(f'Validation Speakers (Noisy): {val_speakers}')
     print(f'Test Speakers (Noisy): {test_speakers}')
     
     clean_clips_train_all = glob.glob(os.path.join(clean_train_path,'**/*.wav'), recursive=True)
     noisy_clips_train_all = []
     for speaker in train_speakers_noisy:
         noisy_clips_train_all.extend(glob.glob(os.path.join(noisy_path,speaker,'*.wav')))
+    
+    val_clips_all = []
+    for speaker in val_speakers:
+        for clip in os.listdir(os.path.join(noisy_path,speaker)):
+            val_clips_all.append(f'{speaker}/{clip}') #Saving only speaker/clip.wav
+    
     test_clips_all = []
     for speaker in test_speakers:
         for clip in os.listdir(os.path.join(noisy_path,speaker)):
@@ -525,12 +533,18 @@ def transfer_timit(timit_dir,data_cache,test_speakers,train_duration_max,test_du
     np.random.seed(8)
     np.random.shuffle(noisy_clips_train_all)
     np.random.seed(9)
+    np.random.shuffle(val_clips_all)
+    np.random.seed(10)
     np.random.shuffle(test_clips_all)
 
     os.makedirs(os.path.join(data_cache,'clean','train'))
     os.makedirs(os.path.join(data_cache,'clean','test'))
     os.makedirs(os.path.join(data_cache,'noisy','train'))
     os.makedirs(os.path.join(data_cache,'noisy','test'))
+    if val_required:
+        os.makedirs(os.path.join(data_cache,'clean','val'))
+        os.makedirs(os.path.join(data_cache,'noisy','val'))
+
 
     clean_train_duration_saved = 0
     for clip in clean_clips_train_all:
@@ -549,7 +563,16 @@ def transfer_timit(timit_dir,data_cache,test_speakers,train_duration_max,test_du
             noisy_train_duration_saved+=librosa.get_duration(filename=clip)
 
     print(f'Saved {noisy_train_duration_saved} seconds of noisy audio to train.')
+    
+    val_duration_saved = 0
+    for clip in val_clips_all:
+        basename = os.path.basename(clip)
+        if librosa.get_duration(filename=os.path.join(timit_dir,'test','clean',clip)) + val_duration_saved < val_duration_max and librosa.get_duration(filename=os.path.join(timit_dir,'test','clean',clip))>1:
+            shutil.copyfile(os.path.join(timit_dir,'test','clean',clip),os.path.join(data_cache,'clean','val',basename))
+            shutil.copyfile(os.path.join(noisy_path,clip),os.path.join(data_cache,'noisy','val',basename))
+            val_duration_saved+=librosa.get_duration(filename=os.path.join(timit_dir,'test','clean',clip))
 
+    print(f'Saved {val_duration_saved} seconds of audio to val.')
 
     test_duration_saved = 0
     for clip in test_clips_all:
@@ -640,6 +663,7 @@ if __name__ == '__main__':
     parser.add_argument('--train_speakers', dest='train_speakers', nargs='+' ,type=str, default=defaults["train_speakers"], help="Ids of speakers to be used in train set. Use only if --transfer_mode is additive_noise.")
     parser.add_argument('--test_speakers', dest='test_speakers', nargs='+' ,type=str, default=defaults["test_speakers"], help="Ids of speakers to be used in test set. Use only if --transfer_mode is additive_noise.")
     parser.add_argument('--train_duration_max', dest='train_duration_max' ,type=int, default=defaults["train_duration_max"], help="Max duration of train dataset. Use only if --transfer_mode is additive_noise.")
+    parser.add_argument('--val_duration_max', dest='val_duration_max' ,type=int, default=defaults["val_duration_max"], help="Max duration of val dataset. Use only if --transfer_mode is additive_noise.")
     parser.add_argument('--test_duration_max', dest='test_duration_max' ,type=int, default=defaults["test_duration_max"], help="Max duration of test dataset. Use only if --transfer_mode is additive_noise.")
     parser.add_argument('--noise_dB', dest='noise_dB' ,type=int, default=defaults["timit_noise_dB"], help="SNR for TIMIT noise dataset. Use only if --transfer_mode is timit.")
     args = parser.parse_args()
@@ -658,7 +682,7 @@ if __name__ == '__main__':
     elif args.transfer_mode == 'additive_noise':
         additive_noise(args.clean_path, args.noise_file, args.data_cache, args.train_speakers, args.test_speakers, args.train_duration_max, args.test_duration_max)
     elif args.transfer_mode == 'timit':
-        transfer_timit(defaults["timit_dir"],args.data_cache, defaults["timit_test_speakers"], args.train_duration_max, args.test_duration_max, defaults["timit_noise_type"],args.noise_dB)
+        transfer_timit(defaults["timit_dir"],args.data_cache, defaults["timit_val_spakers"],defaults["timit_test_speakers"], args.train_duration_max, args.val_duration_max, args.test_duration_max, defaults["timit_noise_type"],args.noise_dB, defaults['val_required'])
     elif args.transfer_mode == 'timit_parallel':
         transfer_timit_parallel(defaults["timit_dir"],args.data_cache, defaults["timit_test_speakers"], args.train_duration_max, args.test_duration_max, defaults["timit_noise_type"],args.noise_dB)
     

@@ -68,7 +68,7 @@ def validate(name, epochs, data_cache, results_dir):
     return info
 
 
-def apsipa_exp(names,csv_path,sources, data_cache='/content/Pix2Pix-VC/data_cache',results_dir='/content/Pix2Pix-VC/results', epochs = [50,100,150,200,250,300,350,400]):
+def apsipa_exp(names,csv_path,sources, data_cache='/content/AttentionGAN-VC/data_cache',results_dir='/content/AttentionGAN-VC/results', epochs = [50,100,150,200,250,300,350,400]):
      for name, source in zip(names,sources):
         print('#'*25)
         print(f'Training {name} with Data from {source}')
@@ -123,7 +123,7 @@ if __name__ == '__main__':
     
 
     sources = ['Non-Parallel/RATS']
-    apsipa_exp([f'AttentionGAN_no_phase_mask_cycdisc_{i}' for i in ['np_rats']],csv_path,sources)
+    apsipa_exp([f'AttentionGAN_nophase_mask_cycdisc_{i}' for i in ['np_rats']],csv_path,sources)
     
 
 

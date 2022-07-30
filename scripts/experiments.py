@@ -43,7 +43,7 @@ def validate(name, epochs, data_cache, results_dir):
     min_mssl_epoch=-1
 
     for epoch in epochs:
-        run(f'python test.py --dataroot data_cache  --split val --name {name} --model pix2pix --direction AtoB --netG resnet_9blocks  --input_nc 1 --output_nc 1 --dataset_mode audio --checkpoints_dir /content/drive/MyDrive/APSIPA/Results/checkpoints --save_dir {results_dir} --epoch {epoch}')
+        run(f'python test.py --dataroot data_cache --phase val --name {name} --model pix2pix --direction AtoB --netG resnet_9blocks  --input_nc 1 --output_nc 1 --dataset_mode audio --checkpoints_dir /content/drive/MyDrive/APSIPA/Results/checkpoints --save_dir {results_dir} --epoch {epoch}')
         avg_lsd,std_lsd = lsd(os.path.join(data_cache,'noisy','val'),os.path.join(results_dir,name,f'val_{epoch}','audios','fake_B'),use_gender=False)
         avg_mssl,std_mssl = mssl(os.path.join(data_cache,'noisy','val'),os.path.join(results_dir,name,f'val_{epoch}','audios','fake_B'),use_gender=False)
 
@@ -90,7 +90,7 @@ def apsipa_exp(names,csv_path,sources, data_cache='/content/Pix2Pix-VC/data_cach
                 break
 
         info['name'] = name
-        info['comment'] = f'Pix2Pix trained for 200 epochs+ 200 with decay on {source} dataset, with Lambda_L1 200.'
+        info['comment'] = f'AttentionGAN-VC trained for 200 epochs+ 200 with decay on {source} dataset'
         log(csv_path, info)
 
         shutil.rmtree(data_cache)
@@ -122,8 +122,8 @@ if __name__ == '__main__':
         df.to_csv(csv_path,index=False)
     
 
-    sources = ['Parallel/RATS']
-    apsipa_exp([f'Pix2Pix_{i}' for i in ['pl_rats']],csv_path,sources)
+    sources = ['Non-Parallel/RATS']
+    apsipa_exp([f'AttentionGAN_no_phase_mask_cycdisc_{i}' for i in ['np_rats']],csv_path,sources)
     
 
 

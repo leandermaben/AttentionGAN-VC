@@ -43,7 +43,7 @@ def validate(name, epochs, data_cache, results_dir):
     min_mssl_epoch=-1
 
     for epoch in epochs:
-        run(f'python test.py --dataroot data_cache --phase val --name {name} --model attention_gan --dataset_mode audio --norm instance --phase test --no_dropout --load_size_h 128 --load_size_w 128 --crop_size 128 --batch_size 1 --gpu_ids 0 --input_nc 1 --output_nc 1 --use_mask --checkpoints_dir /content/drive/MyDrive/APSIPA/Results/checkpoints --epoch {epoch} --save_dir {results_dir}')
+        run(f'python test.py --dataroot data_cache --phase val --name {name} --model attention_gan --dataset_mode audio --norm instance --phase test --no_dropout --load_size_h 128 --load_size_w 128 --crop_size 128 --batch_size 1 --gpu_ids 0 --input_nc 1 --output_nc 1 --use_mask --checkpoints_dir /content/drive/MyDrive/APSIPA/Results/checkpoints --epoch {epoch} --results_dir {results_dir}')
         avg_lsd,std_lsd = lsd(os.path.join(data_cache,'noisy','val'),os.path.join(results_dir,name,f'val_{epoch}','audios','fake_B'),use_gender=False)
         avg_mssl,std_mssl = mssl(os.path.join(data_cache,'noisy','val'),os.path.join(results_dir,name,f'val_{epoch}','audios','fake_B'),use_gender=False)
 
@@ -73,12 +73,12 @@ def apsipa_exp(names,csv_path,sources, data_cache='/content/AttentionGAN-VC/data
         print('#'*25)
         print(f'Training {name} with Data from {source}')
         shutil.copytree(os.path.join('/content/drive/MyDrive/APSIPA/Data_Sources',source),data_cache)
-        run(f'python train.py --dataroot data_cache --name {name} --model attention_gan --dataset_mode audio --pool_size 50 --no_dropout --norm instance --lambda_A 10 --lambda_B 10 --lambda_identity 0.5 --load_size_h 128 --load_size_w 128 --crop_size 128 --preprocess resize --batch_size 4 --niter 200 --niter_decay 200 --gpu_ids 0 --display_id 0 --display_freq 100 --print_freq 100 --input_nc 1 --output_nc 1 --use_cycled_discriminators --use_mask --max_mask_len 50 --checkpoints_dir /content/drive/MyDrive/APSIPA/Results/checkpoints --no_html')
+        #run(f'python train.py --dataroot data_cache --name {name} --model attention_gan --dataset_mode audio --pool_size 50 --no_dropout --norm instance --lambda_A 10 --lambda_B 10 --lambda_identity 0.5 --load_size_h 128 --load_size_w 128 --crop_size 128 --preprocess resize --batch_size 4 --niter 200 --niter_decay 200 --gpu_ids 0 --display_id 0 --display_freq 100 --print_freq 100 --input_nc 1 --output_nc 1 --use_cycled_discriminators --use_mask --max_mask_len 50 --checkpoints_dir /content/drive/MyDrive/APSIPA/Results/checkpoints --no_html')
         
         info = validate(name, epochs, data_cache, results_dir)
         for metric in ['min_lsd_epoch','min_mssl_epoch']:
             epoch = info[metric]
-            run(f'python test.py --dataroot data_cache --name {name} --model attention_gan --dataset_mode audio --norm instance --phase test --no_dropout --load_size_h 128 --load_size_w 128 --crop_size 128 --batch_size 1 --gpu_ids 0 --input_nc 1 --output_nc 1 --use_mask --checkpoints_dir /content/drive/MyDrive/APSIPA/Results/checkpoints --epoch {epoch} --save_dir {results_dir}')
+            run(f'python test.py --dataroot data_cache --name {name} --model attention_gan --dataset_mode audio --norm instance --phase test --no_dropout --load_size_h 128 --load_size_w 128 --crop_size 128 --batch_size 1 --gpu_ids 0 --input_nc 1 --output_nc 1 --use_mask --checkpoints_dir /content/drive/MyDrive/APSIPA/Results/checkpoints --epoch {epoch} --results_dir {results_dir}')
             info[f'avg_test_lsd_{metric}'],info[f'std_test_lsd_{metric}'] = lsd(os.path.join(data_cache,'noisy','test'),os.path.join(results_dir,name,f'test_{epoch}','audios','fake_B'),use_gender=False)
             info[f'avg_test_mssl_{metric}'],info[f'std_test_mssl_{metric}'] = mssl(os.path.join(data_cache,'noisy','test'),os.path.join(results_dir,name,f'test_{epoch}','audios','fake_B'),use_gender=False)
 

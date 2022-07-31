@@ -38,7 +38,7 @@ from util.util import denorm_and_numpy, getTimeSeries
 import soundfile as sf
 import numpy as np
 import json
-
+import matplotlib.pyplot as plt
 with open('defaults.json','r') as f:
     defaults = json.load(f)
 
@@ -51,13 +51,13 @@ def save_audio(opt, visuals_list, img_path, use_phase=False, label='fakeA'):
     """
 
     results_dir = os.path.join(opt.results_dir, opt.name, '{}_{}'.format(opt.phase, opt.epoch))
-    img_dir = os.path.join(results_dir, 'audios')
+    img_dir = os.path.join(results_dir, 'images')
     short_path = ntpath.basename(img_path[0])
     name = os.path.splitext(short_path)[0]
 
     
 
-    file_name = '%s/%s.wav' % (label, name)
+    file_name = '%s/%s.png' % (label, name)
     os.makedirs(os.path.join(img_dir, label), exist_ok=True)
     save_path = os.path.join(img_dir, file_name)
 
@@ -96,8 +96,10 @@ def save_audio(opt, visuals_list, img_path, use_phase=False, label='fakeA'):
             else:
                 mag_spec = np.concatenate((mag_spec, im), axis=1) #concatenating specs to obtain original.
 
-
+    
     data, sr = getTimeSeries(mag_spec, phase_spec, img_path, opt.spec_power, opt.energy, state = opt.phase, use_phase=use_phase)
+    # plt.matshow(mag_spec)
+    # plt.savefig(save_path)
     print('Output')
     print(data.shape)
     sf.write(save_path, data, sr)
@@ -161,6 +163,20 @@ if __name__ == '__main__':
 
         print("saving: ", img_path[0])
         save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='fake_B')
+        # save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='real_A')
+        # save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='a1_b')
+        # save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='a2_b')
+        # save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='a3_b')
+        # save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='a10_b')
+        # save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='o1_b')
+        # save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='o2_b')
+        # save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='o3_b')
+        # save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='o10_b')
+        # save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='i1_b')
+        # save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='i2_b')
+        # save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='i3_b')
+
+
         #save_audio(opt, visuals_list, img_path, use_phase=opt.use_phase, label='rec_A')
         idx += 1
     

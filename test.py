@@ -51,13 +51,13 @@ def save_audio(opt, visuals_list, img_path, use_phase=False, label='fakeA'):
     """
 
     results_dir = os.path.join(opt.results_dir, opt.name, '{}_{}'.format(opt.phase, opt.epoch))
-    img_dir = os.path.join(results_dir, 'images')
+    img_dir = os.path.join(results_dir, 'audios')
     short_path = ntpath.basename(img_path[0])
     name = os.path.splitext(short_path)[0]
 
     
 
-    file_name = '%s/%s.png' % (label, name)
+    file_name = '%s/%s.wav' % (label, name)
     os.makedirs(os.path.join(img_dir, label), exist_ok=True)
     save_path = os.path.join(img_dir, file_name)
 

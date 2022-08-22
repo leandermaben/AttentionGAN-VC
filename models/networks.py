@@ -699,6 +699,202 @@ def normal_init(m, mean, std):
         m.weight.data.normal_(mean, std)
         m.bias.data.zero_()
 
+#Modification with Phase
+class ResnetGenerator_phase(nn.Module):
+    # initializers
+    def __init__(self, input_nc, output_nc, ngf=64, n_blocks=9):
+        super(ResnetGenerator_mask, self).__init__()
+        self.input_nc = input_nc
+        self.output_nc = output_nc
+        self.ngf = ngf
+        self.nb = n_blocks
+
+        self.conv1_mag = nn.Conv2d(input_nc, ngf, 7, 1, 0)
+        self.conv1_norm_mag = nn.InstanceNorm2d(ngf)
+        self.conv2_mag = nn.Conv2d(ngf, ngf * 2, 3, 2, 1)
+        self.conv2_norm_mag = nn.InstanceNorm2d(ngf * 2)
+        self.conv3_mag = nn.Conv2d(ngf * 2, ngf * 4, 3, 2, 1)
+        self.conv3_norm_mag = nn.InstanceNorm2d(ngf * 4)
+
+        self.conv1_phase = nn.Conv2d(input_nc, ngf, 7, 1, 0)
+        self.conv1_norm_phase = nn.InstanceNorm2d(ngf)
+        self.conv2_phase = nn.Conv2d(ngf, ngf * 2, 3, 2, 1)
+        self.conv2_norm_phase = nn.InstanceNorm2d(ngf * 2)
+        self.conv3_phase = nn.Conv2d(ngf * 2, ngf * 4, 3, 2, 1)
+        self.conv3_norm_phase = nn.InstanceNorm2d(ngf * 4)
+
+        self.resnet_blocks_mag_first = []
+        for i in range(n_blocks//2):
+            self.resnet_blocks_mag_first.append(resnet_block(ngf * 4, 3, 1, 1))
+            self.resnet_blocks_mag_first[i].weight_init(0, 0.02)
+        
+        self.resnet_blocks_mag_second = []
+        for i in range(n_blocks//2,n_blocks):
+            self.resnet_blocks_mag_second.append(resnet_block(ngf * 4, 3, 1, 1))
+            self.resnet_blocks_mag_second[i].weight_init(0, 0.02)
+
+        self.resnet_blocks_mag_first = nn.Sequential(*self.resnet_blocks_mag_first)
+        self.resnet_blocks_mag_second = nn.Sequential(*self.resnet_blocks_mag_second)
+
+
+        self.resnet_blocks_phase_first = []
+        for i in range(n_blocks//2):
+            self.resnet_blocks_phase_first.append(resnet_block(ngf * 4, 3, 1, 1))
+            self.resnet_blocks_phase_first[i].weight_init(0, 0.02)
+        
+        self.resnet_blocks_phase_second = []
+        for i in range(n_blocks//2,n_blocks):
+            self.resnet_blocks_phase_second.append(resnet_block(ngf * 4, 3, 1, 1))
+            self.resnet_blocks_phase_second[i].weight_init(0, 0.02)
+
+        self.resnet_blocks_phase_first = nn.Sequential(*self.resnet_blocks_phase_first)
+        self.resnet_blocks_phase_second = nn.Sequential(*self.resnet_blocks_phase_second)
+
+
+        # self.resnet_blocks1 = resnet_block(256, 3, 1, 1)
+        # self.resnet_blocks1.weight_init(0, 0.02)
+        # self.resnet_blocks2 = resnet_block(256, 3, 1, 1)
+        # self.resnet_blocks2.weight_init(0, 0.02)
+        # self.resnet_blocks3 = resnet_block(256, 3, 1, 1)
+        # self.resnet_blocks3.weight_init(0, 0.02)
+        # self.resnet_blocks4 = resnet_block(256, 3, 1, 1)
+        # self.resnet_blocks4.weight_init(0, 0.02)
+        # self.resnet_blocks5 = resnet_block(256, 3, 1, 1)
+        # self.resnet_blocks5.weight_init(0, 0.02)
+        # self.resnet_blocks6 = resnet_block(256, 3, 1, 1)
+        # self.resnet_blocks6.weight_init(0, 0.02)
+        # self.resnet_blocks7 = resnet_block(256, 3, 1, 1)
+        # self.resnet_blocks7.weight_init(0, 0.02)
+        # self.resnet_blocks8 = resnet_block(256, 3, 1, 1)
+        # self.resnet_blocks8.weight_init(0, 0.02)
+        # self.resnet_blocks9 = resnet_block(256, 3, 1, 1)
+        # self.resnet_blocks9.weight_init(0, 0.02)
+
+        self.deconv1_content_mag = nn.ConvTranspose2d(ngf * 4, ngf * 2, 3, 2, 1, 1)
+        self.deconv1_norm_content_mag = nn.InstanceNorm2d(ngf * 2)
+        self.deconv2_content_mag = nn.ConvTranspose2d(ngf * 2, ngf, 3, 2, 1, 1)
+        self.deconv2_norm_content_mag = nn.InstanceNorm2d(ngf)
+        self.deconv3_content_mag = nn.Conv2d(ngf, self.output_nc*9, 7, 1, 0)
+
+        self.deconv1_attention_mag = nn.ConvTranspose2d(ngf * 4, ngf * 2, 3, 2, 1, 1)
+        self.deconv1_norm_attention_mag = nn.InstanceNorm2d(ngf * 2)
+        self.deconv2_attention_mag = nn.ConvTranspose2d(ngf * 2, ngf, 3, 2, 1, 1)
+        self.deconv2_norm_attention_mag = nn.InstanceNorm2d(ngf)
+        self.deconv3_attention_mag = nn.Conv2d(ngf, 10, 1, 1, 0)
+
+        self.deconv1_content_phase = nn.ConvTranspose2d(ngf * 4, ngf * 2, 3, 2, 1, 1)
+        self.deconv1_norm_content_phase = nn.InstanceNorm2d(ngf * 2)
+        self.deconv2_content_phase = nn.ConvTranspose2d(ngf * 2, ngf, 3, 2, 1, 1)
+        self.deconv2_norm_content_phase = nn.InstanceNorm2d(ngf)
+        self.deconv3_content_phase = nn.Conv2d(ngf, self.output_nc*9, 7, 1, 0)
+
+        self.deconv1_attention_phase = nn.ConvTranspose2d(ngf * 4, ngf * 2, 3, 2, 1, 1)
+        self.deconv1_norm_attention_phase = nn.InstanceNorm2d(ngf * 2)
+        self.deconv2_attention_phase = nn.ConvTranspose2d(ngf * 2, ngf, 3, 2, 1, 1)
+        self.deconv2_norm_attention_phase = nn.InstanceNorm2d(ngf)
+        self.deconv3_attention_phase = nn.Conv2d(ngf, 10, 1, 1, 0)
+        
+        self.tanh = torch.nn.Tanh()
+    # weight_init
+    def weight_init(self, mean, std):
+        for m in self._modules:
+            normal_init(self._modules[m], mean, std)
+
+    # forward method
+    def forward(self, input, mask):
+        x_mag = input[:,0:1,:,:]*mask
+        x_mag = torch.cat([x_mag,mask],dim=1)
+        x_mag = F.pad(x_mag, (3, 3, 3, 3), 'reflect') # Check Padding Mode Later
+        x_mag = F.relu(self.conv1_norm(self.conv1(x_mag)))
+        x_mag = F.relu(self.conv2_norm(self.conv2(x_mag)))
+        x_mag = F.relu(self.conv3_norm(self.conv3(x_mag)))
+        x_mag = self.resnet_blocks_mag_first(x_mag)
+
+
+        x_phase = input[:,1:2,:,:]*mask
+        x_phase = torch.cat([x_phase,mask],dim=1)
+        x_phase = F.pad(x_phase, (3, 3, 3, 3), 'reflect') # Check Padding Mode Later
+        x_phase = F.relu(self.conv1_norm(self.conv1(x_phase)))
+        x_phase = F.relu(self.conv2_norm(self.conv2(x_phase)))
+        x_phase = F.relu(self.conv3_norm(self.conv3(x_phase)))
+        x_phase = self.resnet_blocks_phase_first(x_phase)
+        
+        # x = self.resnet_blocks1(x)
+        # x = self.resnet_blocks2(x)
+        # x = self.resnet_blocks3(x)
+        # x = self.resnet_blocks4(x)
+        # x = self.resnet_blocks5(x)
+        # x = self.resnet_blocks6(x)
+        # x = self.resnet_blocks7(x)
+        # x = self.resnet_blocks8(x)
+        # x = self.resnet_blocks9(x)
+        x_content = F.relu(self.deconv1_norm_content(self.deconv1_content(x)))
+        x_content = F.relu(self.deconv2_norm_content(self.deconv2_content(x_content)))
+        x_content = F.pad(x_content, (3, 3, 3, 3), 'reflect')
+        content = self.deconv3_content(x_content)
+        image = self.tanh(content)
+        image1 = image[:, 0:self.output_nc*1, :, :]
+        
+        image2 = image[:, self.output_nc*1:self.output_nc*2, :, :]
+        image3 = image[:, self.output_nc*2:self.output_nc*3, :, :]
+        image4 = image[:, self.output_nc*3:self.output_nc*4, :, :]
+        image5 = image[:, self.output_nc*4:self.output_nc*5, :, :]
+        image6 = image[:, self.output_nc*5:self.output_nc*6, :, :]
+        image7 = image[:, self.output_nc*6:self.output_nc*7, :, :]
+        image8 = image[:, self.output_nc*7:self.output_nc*8, :, :]
+        image9 = image[:, self.output_nc*8:self.output_nc*9, :, :]
+
+        x_attention = F.relu(self.deconv1_norm_attention(self.deconv1_attention(x)))
+        x_attention = F.relu(self.deconv2_norm_attention(self.deconv2_attention(x_attention)))
+        # x_attention = F.pad(x_attention, (3, 3, 3, 3), 'reflect')
+        # print(x_attention.size()) [1, 64, 256, 256]
+        attention = self.deconv3_attention(x_attention)
+
+        softmax_ = torch.nn.Softmax(dim=1)
+        attention = softmax_(attention)
+
+        attention1_ = attention[:, 0:1, :, :]
+        attention2_ = attention[:, 1:2, :, :]
+        attention3_ = attention[:, 2:3, :, :]
+        attention4_ = attention[:, 3:4, :, :]
+        attention5_ = attention[:, 4:5, :, :]
+        attention6_ = attention[:, 5:6, :, :]
+        attention7_ = attention[:, 6:7, :, :]
+        attention8_ = attention[:, 7:8, :, :]
+        attention9_ = attention[:, 8:9, :, :]
+        attention10_ = attention[:, 9:10, :, :]
+
+        attention1 = attention1_.repeat(1, self.output_nc, 1, 1)
+        
+        attention2 = attention2_.repeat(1, self.output_nc, 1, 1)
+        attention3 = attention3_.repeat(1, self.output_nc, 1, 1)
+        attention4 = attention4_.repeat(1, self.output_nc, 1, 1)
+        attention5 = attention5_.repeat(1, self.output_nc, 1, 1)
+        attention6 = attention6_.repeat(1, self.output_nc, 1, 1)
+        attention7 = attention7_.repeat(1, self.output_nc, 1, 1)
+        attention8 = attention8_.repeat(1, self.output_nc, 1, 1)
+        attention9 = attention9_.repeat(1, self.output_nc, 1, 1)
+        attention10 = attention10_.repeat(1, self.output_nc, 1, 1)
+
+        output1 = image1 * attention1
+        output2 = image2 * attention2
+        output3 = image3 * attention3
+        output4 = image4 * attention4
+        output5 = image5 * attention5
+        output6 = image6 * attention6
+        output7 = image7 * attention7
+        output8 = image8 * attention8
+        output9 = image9 * attention9
+        # output10 = image10 * attention10
+        output10 = input * attention10
+
+
+        o=output1 + output2 + output3 + output4 + output5 + output6 + output7 + output8 + output9 + output10
+
+        return o, output1, output2, output3, output4, output5, output6, output7, output8, output9, output10, attention1,attention2,attention3, attention4, attention5, attention6, attention7, attention8,attention9,attention10, image1, image2,image3,image4,image5,image6,image7,image8,image9
+
+
+
 class ResnetBlock(nn.Module):
     """Define a Resnet block"""
 

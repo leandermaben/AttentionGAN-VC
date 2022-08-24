@@ -36,6 +36,8 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--lr_policy', type=str, default='linear', help='learning rate policy. [linear | step | plateau | cosine]')
         parser.add_argument('--lr_decay_iters', type=int, default=50, help='multiply by a gamma every lr_decay_iters iterations')
         parser.add_argument('--use_cycled_discriminators', action='store_true', help='Use cycled discriminators for training.')
-
+        parser.add_argument('--mag_weight_adv', type=float, default=1, help='weight for magnitude spectrogram for adversarial loss')
+        parser.add_argument('--mag_weight_cycle', type=float, default=1, help='weight for magnitude spectrogram for cyclic loss')
+        parser.add_argument('--mag_weight_identity', type=float, default=1, help='weight for magnitude spectrogram for identity loss')
         self.isTrain = True
         return parser

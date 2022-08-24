@@ -163,6 +163,9 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
             net = ResnetGenerator_mask(input_nc+1, output_nc, ngf, n_blocks=9)
         else:
             net = ResnetGenerator_our(input_nc, output_nc, ngf, n_blocks=9)
+    elif netG == 'resnet_phase':
+        if use_mask:
+            net = ResnetGenerator_phase(input_nc+1, output_nc, ngf, n_blocks=9)
 
         
     else:
@@ -709,14 +712,14 @@ class ResnetGenerator_phase(nn.Module):
         self.ngf = ngf
         self.nb = n_blocks
 
-        self.conv1_mag = nn.Conv2d(input_nc, ngf, 7, 1, 0)
+        self.conv1_mag = nn.Conv2d(input_nc-1, ngf, 7, 1, 0)
         self.conv1_norm_mag = nn.InstanceNorm2d(ngf)
         self.conv2_mag = nn.Conv2d(ngf, ngf * 2, 3, 2, 1)
         self.conv2_norm_mag = nn.InstanceNorm2d(ngf * 2)
         self.conv3_mag = nn.Conv2d(ngf * 2, ngf * 4, 3, 2, 1)
         self.conv3_norm_mag = nn.InstanceNorm2d(ngf * 4)
 
-        self.conv1_phase = nn.Conv2d(input_nc, ngf, 7, 1, 0)
+        self.conv1_phase = nn.Conv2d(input_nc-1, ngf, 7, 1, 0)
         self.conv1_norm_phase = nn.InstanceNorm2d(ngf)
         self.conv2_phase = nn.Conv2d(ngf, ngf * 2, 3, 2, 1)
         self.conv2_norm_phase = nn.InstanceNorm2d(ngf * 2)
@@ -734,6 +737,7 @@ class ResnetGenerator_phase(nn.Module):
             self.resnet_blocks_mag_second[i].weight_init(0, 0.02)
 
         self.resnet_blocks_mag_first = nn.Sequential(*self.resnet_blocks_mag_first)
+        self.conv_11_mag = nn.Conv2d(ngf, ngf/2, 1, 1, 0)
         self.resnet_blocks_mag_second = nn.Sequential(*self.resnet_blocks_mag_second)
 
 
@@ -748,8 +752,10 @@ class ResnetGenerator_phase(nn.Module):
             self.resnet_blocks_phase_second[i].weight_init(0, 0.02)
 
         self.resnet_blocks_phase_first = nn.Sequential(*self.resnet_blocks_phase_first)
+        self.conv_11_phase = nn.Conv2d(ngf, ngf/2, 1, 1, 0)
         self.resnet_blocks_phase_second = nn.Sequential(*self.resnet_blocks_phase_second)
 
+        
 
         # self.resnet_blocks1 = resnet_block(256, 3, 1, 1)
         # self.resnet_blocks1.weight_init(0, 0.02)
@@ -774,7 +780,7 @@ class ResnetGenerator_phase(nn.Module):
         self.deconv1_norm_content_mag = nn.InstanceNorm2d(ngf * 2)
         self.deconv2_content_mag = nn.ConvTranspose2d(ngf * 2, ngf, 3, 2, 1, 1)
         self.deconv2_norm_content_mag = nn.InstanceNorm2d(ngf)
-        self.deconv3_content_mag = nn.Conv2d(ngf, self.output_nc*9, 7, 1, 0)
+        self.deconv3_content_mag = nn.Conv2d(ngf, 9, 7, 1, 0)
 
         self.deconv1_attention_mag = nn.ConvTranspose2d(ngf * 4, ngf * 2, 3, 2, 1, 1)
         self.deconv1_norm_attention_mag = nn.InstanceNorm2d(ngf * 2)
@@ -786,7 +792,7 @@ class ResnetGenerator_phase(nn.Module):
         self.deconv1_norm_content_phase = nn.InstanceNorm2d(ngf * 2)
         self.deconv2_content_phase = nn.ConvTranspose2d(ngf * 2, ngf, 3, 2, 1, 1)
         self.deconv2_norm_content_phase = nn.InstanceNorm2d(ngf)
-        self.deconv3_content_phase = nn.Conv2d(ngf, self.output_nc*9, 7, 1, 0)
+        self.deconv3_content_phase = nn.Conv2d(ngf, 9, 7, 1, 0)
 
         self.deconv1_attention_phase = nn.ConvTranspose2d(ngf * 4, ngf * 2, 3, 2, 1, 1)
         self.deconv1_norm_attention_phase = nn.InstanceNorm2d(ngf * 2)
@@ -809,6 +815,7 @@ class ResnetGenerator_phase(nn.Module):
         x_mag = F.relu(self.conv2_norm(self.conv2(x_mag)))
         x_mag = F.relu(self.conv3_norm(self.conv3(x_mag)))
         x_mag = self.resnet_blocks_mag_first(x_mag)
+        x_mag_reduced = self.conv_11_mag(x_mag)
 
 
         x_phase = input[:,1:2,:,:]*mask
@@ -818,75 +825,138 @@ class ResnetGenerator_phase(nn.Module):
         x_phase = F.relu(self.conv2_norm(self.conv2(x_phase)))
         x_phase = F.relu(self.conv3_norm(self.conv3(x_phase)))
         x_phase = self.resnet_blocks_phase_first(x_phase)
-        
-        # x = self.resnet_blocks1(x)
-        # x = self.resnet_blocks2(x)
-        # x = self.resnet_blocks3(x)
-        # x = self.resnet_blocks4(x)
-        # x = self.resnet_blocks5(x)
-        # x = self.resnet_blocks6(x)
-        # x = self.resnet_blocks7(x)
-        # x = self.resnet_blocks8(x)
-        # x = self.resnet_blocks9(x)
-        x_content = F.relu(self.deconv1_norm_content(self.deconv1_content(x)))
-        x_content = F.relu(self.deconv2_norm_content(self.deconv2_content(x_content)))
-        x_content = F.pad(x_content, (3, 3, 3, 3), 'reflect')
-        content = self.deconv3_content(x_content)
-        image = self.tanh(content)
-        image1 = image[:, 0:self.output_nc*1, :, :]
-        
-        image2 = image[:, self.output_nc*1:self.output_nc*2, :, :]
-        image3 = image[:, self.output_nc*2:self.output_nc*3, :, :]
-        image4 = image[:, self.output_nc*3:self.output_nc*4, :, :]
-        image5 = image[:, self.output_nc*4:self.output_nc*5, :, :]
-        image6 = image[:, self.output_nc*5:self.output_nc*6, :, :]
-        image7 = image[:, self.output_nc*6:self.output_nc*7, :, :]
-        image8 = image[:, self.output_nc*7:self.output_nc*8, :, :]
-        image9 = image[:, self.output_nc*8:self.output_nc*9, :, :]
+        x_phase_reduced = self.conv_11_phase(x_phase)
 
-        x_attention = F.relu(self.deconv1_norm_attention(self.deconv1_attention(x)))
-        x_attention = F.relu(self.deconv2_norm_attention(self.deconv2_attention(x_attention)))
+        x_combined = torch.cat([x_mag_reduced,x_phase_reduced],dim=1)
+
+        x_mag = self.resnet_blocks_mag_second(x_combined)
+        x_phase = self.resnet_blocks_phase_second(x_combined)
+        
+
+        x_content_mag = F.relu(self.deconv1_norm_content_mag(self.deconv1_content_mag(x_mag)))
+        x_content_mag = F.relu(self.deconv2_norm_content_mag(self.deconv2_content_mag(x_content_mag)))
+        x_content_mag = F.pad(x_content_mag, (3, 3, 3, 3), 'reflect')
+        content_mag = self.deconv3_content_mag(x_content_mag)
+        image_mag = self.tanh(content_mag)
+
+        x_content_phase = F.relu(self.deconv1_norm_content_phase(self.deconv1_content_phase(x_phase)))
+        x_content_phase = F.relu(self.deconv2_norm_content_phase(self.deconv2_content_phase(x_content_phase)))
+        x_content_phase = F.pad(x_content_phase, (3, 3, 3, 3), 'reflect')
+        content_phase = self.deconv3_content_phase(x_content_phase)
+        image_phase = self.tanh(content_phase)
+
+        image1_mag = image_mag[:, 0:1, :, :]
+        image2_mag = image_mag[:, 1:2, :, :]
+        image3_mag = image_mag[:, 2:3, :, :]
+        image4_mag = image_mag[:, 3:4, :, :]
+        image5_mag = image_mag[:, 4:5, :, :]
+        image6_mag = image_mag[:, 5:6, :, :]
+        image7_mag = image_mag[:, 6:7, :, :]
+        image8_mag = image_mag[:, 7:8, :, :]
+        image9_mag = image_mag[:, 8:9, :, :]
+
+        image1_phase = image_phase[:, 0:1, :, :]
+        image2_phase = image_phase[:, 1:2, :, :]
+        image3_phase = image_phase[:, 2:3, :, :]
+        image4_phase = image_phase[:, 3:4, :, :]
+        image5_phase = image_phase[:, 4:5, :, :]
+        image6_phase = image_phase[:, 5:6, :, :]
+        image7_phase = image_phase[:, 6:7, :, :]
+        image8_phase = image_phase[:, 7:8, :, :]
+        image9_phase = image_phase[:, 8:9, :, :]
+
+        x_attention_mag = F.relu(self.deconv1_norm_attention_mag(self.deconv1_attention_mag(x_mag)))
+        x_attention_mag = F.relu(self.deconv2_norm_attention_mag(self.deconv2_attention_mag(x_attention_mag)))
+
+        x_attention_phase = F.relu(self.deconv1_norm_attention_phase(self.deconv1_attention_phase(x_phase)))
+        x_attention_phase = F.relu(self.deconv2_norm_attention_phase(self.deconv2_attention_phase(x_attention_phase)))
         # x_attention = F.pad(x_attention, (3, 3, 3, 3), 'reflect')
         # print(x_attention.size()) [1, 64, 256, 256]
-        attention = self.deconv3_attention(x_attention)
+
+        attention_mag = self.deconv3_attention_mag(x_attention_mag)
+        attention_phase = self.deconv3_attention_phase(x_attention_phase)
 
         softmax_ = torch.nn.Softmax(dim=1)
-        attention = softmax_(attention)
+        attention_mag = softmax_(attention_mag)
+        attention_phase = softmax_(attention_phase)
 
-        attention1_ = attention[:, 0:1, :, :]
-        attention2_ = attention[:, 1:2, :, :]
-        attention3_ = attention[:, 2:3, :, :]
-        attention4_ = attention[:, 3:4, :, :]
-        attention5_ = attention[:, 4:5, :, :]
-        attention6_ = attention[:, 5:6, :, :]
-        attention7_ = attention[:, 6:7, :, :]
-        attention8_ = attention[:, 7:8, :, :]
-        attention9_ = attention[:, 8:9, :, :]
-        attention10_ = attention[:, 9:10, :, :]
+        attention1_mag = attention_mag[:, 0:1, :, :]
+        attention2_mag = attention_mag[:, 1:2, :, :]
+        attention3_mag = attention_mag[:, 2:3, :, :]
+        attention4_mag = attention_mag[:, 3:4, :, :]
+        attention5_mag = attention_mag[:, 4:5, :, :]
+        attention6_mag = attention_mag[:, 5:6, :, :]
+        attention7_mag = attention_mag[:, 6:7, :, :]
+        attention8_mag = attention_mag[:, 7:8, :, :]
+        attention9_mag = attention_mag[:, 8:9, :, :]
+        attention10_mag = attention_mag[:, 9:10, :, :]
 
-        attention1 = attention1_.repeat(1, self.output_nc, 1, 1)
-        
-        attention2 = attention2_.repeat(1, self.output_nc, 1, 1)
-        attention3 = attention3_.repeat(1, self.output_nc, 1, 1)
-        attention4 = attention4_.repeat(1, self.output_nc, 1, 1)
-        attention5 = attention5_.repeat(1, self.output_nc, 1, 1)
-        attention6 = attention6_.repeat(1, self.output_nc, 1, 1)
-        attention7 = attention7_.repeat(1, self.output_nc, 1, 1)
-        attention8 = attention8_.repeat(1, self.output_nc, 1, 1)
-        attention9 = attention9_.repeat(1, self.output_nc, 1, 1)
-        attention10 = attention10_.repeat(1, self.output_nc, 1, 1)
+        attention1_phase = attention_phase[:, 0:1, :, :]
+        attention2_phase = attention_phase[:, 1:2, :, :]
+        attention3_phase = attention_phase[:, 2:3, :, :]
+        attention4_phase = attention_phase[:, 3:4, :, :]
+        attention5_phase = attention_phase[:, 4:5, :, :]
+        attention6_phase = attention_phase[:, 5:6, :, :]
+        attention7_phase = attention_phase[:, 6:7, :, :]
+        attention8_phase = attention_phase[:, 7:8, :, :]
+        attention9_phase = attention_phase[:, 8:9, :, :]
+        attention10_phase = attention_phase[:, 9:10, :, :]
 
-        output1 = image1 * attention1
-        output2 = image2 * attention2
-        output3 = image3 * attention3
-        output4 = image4 * attention4
-        output5 = image5 * attention5
-        output6 = image6 * attention6
-        output7 = image7 * attention7
-        output8 = image8 * attention8
-        output9 = image9 * attention9
+        output1_mag = image1_mag * attention1_mag
+        output2_mag = image2_mag * attention2_mag
+        output3_mag = image3_mag * attention3_mag
+        output4_mag = image4_mag * attention4_mag
+        output5_mag = image5_mag * attention5_mag
+        output6_mag = image6_mag * attention6_mag
+        output7_mag = image7_mag * attention7_mag
+        output8_mag = image8_mag * attention8_mag
+        output9_mag = image9_mag * attention9_mag
+
+        output10_mag = input[:,1:2,:,:] * attention10_mag
+
+        output1_phase = image1_phase * attention1_phase
+        output2_phase = image2_phase * attention2_phase
+        output3_phase = image3_phase * attention3_phase
+        output4_phase = image4_phase * attention4_phase
+        output5_phase = image5_phase * attention5_phase
+        output6_phase = image6_phase * attention6_phase
+        output7_phase = image7_phase * attention7_phase
+        output8_phase = image8_phase * attention8_phase
+        output9_phase = image9_phase * attention9_phase
         # output10 = image10 * attention10
-        output10 = input * attention10
+        output10_phase = input[:,1:2,:,:] * attention10_phase
+
+        output1 = torch.cat([output1_mag,output1_phase],dim=1)
+        output2 = torch.cat([output2_mag,output2_phase],dim=1)
+        output3 = torch.cat([output3_mag,output3_phase],dim=1)
+        output4 = torch.cat([output4_mag,output4_phase],dim=1)
+        output5 = torch.cat([output5_mag,output5_phase],dim=1)
+        output6 = torch.cat([output6_mag,output6_phase],dim=1)
+        output7 = torch.cat([output7_mag,output7_phase],dim=1)
+        output8 = torch.cat([output8_mag,output8_phase],dim=1)
+        output9 = torch.cat([output9_mag,output9_phase],dim=1)
+        output10 = torch.cat([output10_mag,output10_phase],dim=1)
+
+        attention1 = torch.cat([attention1_mag,attention1_phase],dim=1)
+        attention2 = torch.cat([attention2_mag,attention2_phase],dim=1)
+        attention3 = torch.cat([attention3_mag,attention3_phase],dim=1)
+        attention4 = torch.cat([attention4_mag,attention4_phase],dim=1)
+        attention5 = torch.cat([attention5_mag,attention5_phase],dim=1)
+        attention6 = torch.cat([attention6_mag,attention6_phase],dim=1)
+        attention7 = torch.cat([attention7_mag,attention7_phase],dim=1)
+        attention8 = torch.cat([attention8_mag,attention8_phase],dim=1)
+        attention9 = torch.cat([attention9_mag,attention9_phase],dim=1)
+        attention10 = torch.cat([attention10_mag,attention10_phase],dim=1)
+
+        image1 = torch.cat([image1_mag,image1_phase],dim=1)
+        image2 = torch.cat([image2_mag,image2_phase],dim=1)
+        image3 = torch.cat([image3_mag,image3_phase],dim=1)
+        image4 = torch.cat([image4_mag,image4_phase],dim=1)
+        image5 = torch.cat([image5_mag,image5_phase],dim=1)
+        image6 = torch.cat([image6_mag,image6_phase],dim=1)
+        image7 = torch.cat([image7_mag,image7_phase],dim=1)
+        image8 = torch.cat([image8_mag,image8_phase],dim=1)
+        image9 = torch.cat([image9_mag,image9_phase],dim=1)
 
 
         o=output1 + output2 + output3 + output4 + output5 + output6 + output7 + output8 + output9 + output10

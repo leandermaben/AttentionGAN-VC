@@ -53,15 +53,39 @@ class AttentionGANModel(BaseModel):
                                         not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids, use_mask = opt.use_mask)
 
         if self.isTrain:  # define discriminators
-            self.netD_A = networks.define_D(opt.output_nc, opt.ndf, opt.netD,
-                                            opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
-            self.netD_B = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
-                                            opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
-            if opt.use_cycled_discriminators:
-                self.netD2_A = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
+            if self.opt.netG == 'resnet_phase':
+                input_nc_disc = 1
+            else:
+                input_nc_disc = opt.input_nc
+
+            if self.opt.netG == 'resnet_phase':
+                self.netD_A_mag = networks.define_D(input_nc_disc, opt.ndf, opt.netD,
                                                 opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
-                self.netD2_B = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
+                self.netD_B_mag = networks.define_D(input_nc_disc, opt.ndf, opt.netD,
                                                 opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+                self.netD_A_phase = networks.define_D(input_nc_disc, opt.ndf, opt.netD,
+                                                opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+                self.netD_B_phase = networks.define_D(input_nc_disc, opt.ndf, opt.netD,
+                                                opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+                if opt.use_cycled_discriminators:
+                    self.netD2_A_mag = networks.define_D(input_nc_disc, opt.ndf, opt.netD,
+                                                    opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+                    self.netD2_B_mag = networks.define_D(input_nc_disc, opt.ndf, opt.netD,
+                                                    opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+                    self.netD2_A_phase = networks.define_D(input_nc_disc, opt.ndf, opt.netD,
+                                                    opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+                    self.netD2_B_phase = networks.define_D(input_nc_disc, opt.ndf, opt.netD,
+                                                    opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+            else:
+                self.netD_A = networks.define_D(input_nc_disc, opt.ndf, opt.netD,
+                                            opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+                self.netD_B = networks.define_D(input_nc_disc, opt.ndf, opt.netD,
+                                            opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+                if opt.use_cycled_discriminators:
+                    self.netD2_A = networks.define_D(input_nc_disc, opt.ndf, opt.netD,
+                                                    opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+                    self.netD2_B = networks.define_D(input_nc_disc, opt.ndf, opt.netD,
+                                                    opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
 
         if self.isTrain:
             if opt.lambda_identity > 0.0:  # only works when input and output images have the same number of channels
@@ -77,8 +101,17 @@ class AttentionGANModel(BaseModel):
             self.criterionIdt = torch.nn.L1Loss()
             # initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.
             self.optimizer_G = torch.optim.Adam(itertools.chain(self.netG_A.parameters(), self.netG_B.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999))
-            disc_parameters = itertools.chain(self.netD_A.parameters(), self.netD_B.parameters(), self.netD2_A.parameters(), self.netD2_B.parameters()) if opt.use_cycled_discriminators else itertools.chain(self.netD_A.parameters(), self.netD_B.parameters())
-            self.optimizer_D = torch.optim.Adam(disc_parameters, lr=opt.lr, betas=(opt.beta1, 0.999))
+            if self.opt.netG == 'resnet_phase':
+                if opt.use_cycled_discriminators:
+                    disc_parameters = itertools.chain(self.netD_A_mag.parameters(), self.netD_A_phase.parameters(), self.netD_B_mag.parameters(), self.netD_B_phase.parameters(), self.netD2_A_mag.parameters(), self.netD2_A_phase.parameters(), self.netD2_B_mag.parameters(), self.netD2_B_phase.parameters())
+                else:
+                    disc_parameters=itertools.chain(self.netD_A_mag.parameters(), self.netD_A_phase.parameters(), self.netD_B_mag.parameters(), self.netD_B_phase.parameters())
+            else:
+                if opt.use_cycled_discriminators:
+                    disc_parameters = itertools.chain(self.netD_A.parameters(), self.netD_B.parameters(), self.netD2_A.parameters(), self.netD2_B.parameters())
+                else:
+                    disc_parameters=itertools.chain(self.netD_A.parameters(), self.netD_B.parameters())
+
             self.optimizers.append(self.optimizer_G)
             self.optimizers.append(self.optimizer_D)
 
@@ -166,6 +199,46 @@ class AttentionGANModel(BaseModel):
         """Calculate GAN loss for discriminator D2_B"""
         rec_B = self.rec_B_pool.query(self.rec_B)
         self.loss_D2_B = self.backward_D_basic(self.netD2_B, self.real_B, rec_B)
+    
+    def backward_D_A_mag(self):
+        """Calculate GAN loss for discriminator D_A"""
+        fake_B = self.fake_B_pool.query(self.fake_B)
+        self.loss_D_A = self.backward_D_basic(self.netD_A, self.real_B[:,0:1,:,:], fake_B[:,0:1,:,:])
+    
+    def backward_D_A_phase(self):
+        """Calculate GAN loss for discriminator D_A"""
+        fake_B = self.fake_B_pool.query(self.fake_B)
+        self.loss_D_A = self.backward_D_basic(self.netD_A, self.real_B[:,1:2,:,:], fake_B[:,1:2,:,:])
+
+    def backward_D_B_mag(self):
+        """Calculate GAN loss for discriminator D_B"""
+        fake_A = self.fake_A_pool.query(self.fake_A)
+        self.loss_D_B = self.backward_D_basic(self.netD_B, self.real_A[:,0:1,:,:], fake_A[:,0:1,:,:])
+
+    def backward_D_B_phase(self):
+        """Calculate GAN loss for discriminator D_B"""
+        fake_A = self.fake_A_pool.query(self.fake_A)
+        self.loss_D_B = self.backward_D_basic(self.netD_B, self.real_A[:,1:2,:,:], fake_A[:,1:2,:,:])
+    
+    def backward_D2_A_mag(self):
+        """Calculate GAN loss for discriminator D2_A"""
+        rec_A = self.rec_A_pool.query(self.rec_A)
+        self.loss_D2_A = self.backward_D_basic(self.netD2_A, self.real_A[:,0:1,:,:], rec_A[:,0:1,:,:])
+    
+    def backward_D2_A_phase(self):
+        """Calculate GAN loss for discriminator D2_A"""
+        rec_A = self.rec_A_pool.query(self.rec_A)
+        self.loss_D2_A = self.backward_D_basic(self.netD2_A, self.real_A[:,1:2,:,:], rec_A[:,1:2,:,:])
+
+    def backward_D2_B_mag(self):
+        """Calculate GAN loss for discriminator D2_B"""
+        rec_B = self.rec_B_pool.query(self.rec_B)
+        self.loss_D2_B = self.backward_D_basic(self.netD2_B, self.real_B[:,0:1,:,:], rec_B[:,0:1,:,:])
+    
+    def backward_D2_B_phase(self):
+        """Calculate GAN loss for discriminator D2_B"""
+        rec_B = self.rec_B_pool.query(self.rec_B)
+        self.loss_D2_B = self.backward_D_basic(self.netD2_B, self.real_B[:,1:2,:,:], rec_B[:,1:2,:,:])
 
     def backward_G(self):
         """Calculate the loss for generators G_A and G_B"""
@@ -179,12 +252,20 @@ class AttentionGANModel(BaseModel):
                 self.idt_A, _, _, _, _, _, _, _, _, _, _, \
                 _, _, _, _, _, _, _, _, _, _, \
                 _, _, _, _, _, _, _, _, _  = self.netG_A(self.real_B, torch.ones(self.real_B.size(0),1,self.real_B.size(2),self.real_B.size(3)))
-                self.loss_idt_A = self.criterionIdt(self.idt_A, self.real_B) * lambda_B * lambda_idt
+                
                 # G_B should be identity if real_A is fed: ||G_B(A) - A||
                 self.idt_B, _, _, _, _, _, _, _, _, _, _, \
                 _, _, _, _, _, _, _, _, _, _, \
                 _, _, _, _, _, _, _, _, _  = self.netG_B(self.real_A, torch.ones(self.real_A.size(0),1,self.real_A.size(2),self.real_A.size(3)))
-                self.loss_idt_B = self.criterionIdt(self.idt_B, self.real_A) * lambda_A * lambda_idt
+                
+                if self.opt.netG == 'resnet_phase':
+                    print(f'In resnet phase Identity idt_A_shape{self.idt_A.size()}')
+                    self.loss_idt_A = (self.criterionIdt(self.idt_A[:,0:1,:,:], self.real_B[:,0:1,:,:])*self.opt.mag_weight_identity+self.criterionIdt(self.idt_A[:,1:2,:,:], self.real_B[:,1:2,:,:])) * lambda_B * lambda_idt
+                    self.loss_idt_B = (self.criterionIdt(self.idt_B[:,0:1,:,:], self.real_A[:,0:1,:,:])*self.opt.mag_weight_identity+self.criterionIdt(self.idt_B[:,1:2,:,:], self.real_A[:,1:2,:,:])) * lambda_A * lambda_idt
+                else:
+                    self.loss_idt_A = self.criterionIdt(self.idt_A, self.real_B) * lambda_B * lambda_idt
+                    self.loss_idt_B = self.criterionIdt(self.idt_B, self.real_A) * lambda_A * lambda_idt
+           
             else:
                 self.idt_A, _, _, _, _, _, _, _, _, _, _, \
                 _, _, _, _, _, _, _, _, _, _, \
@@ -200,22 +281,38 @@ class AttentionGANModel(BaseModel):
             self.loss_idt_B = 0
 
         # GAN loss D_A(G_A(A))
-        self.loss_G_A = self.criterionGAN(self.netD_A(self.fake_B), True)
+        if self.opt.netG == 'resnet_phase':
+            self.loss_G_A = self.criterionGAN(self.netD_A_mag(self.fake_B[:,0:1,:,:]), True)*self.opt.mag_weight_adv + self.criterionGAN(self.netD_A_phase(self.fake_B[:,1:2,:,:]), True)
+        else:
+            self.loss_G_A = self.criterionGAN(self.netD_A(self.fake_B), True)
         # GAN loss D_B(G_B(B))
-        self.loss_G_B = self.criterionGAN(self.netD_B(self.fake_A), True)
+        if self.opt.netG == 'resnet_phase':
+            self.loss_G_B = self.criterionGAN(self.netD_B_mag(self.fake_A[:,0:1,:,:]), True)*self.opt.mag_weight_adv + self.criterionGAN(self.netD_B_phase(self.fake_A[:,1:2,:,:]), True)
+        else:
+            self.loss_G_B = self.criterionGAN(self.netD_B(self.fake_A), True)
         if self.opt.use_cycled_discriminators:
             # Cycled Adversarial loss D2_A(G_B(G_A(A)))
-            self.loss_G2_A = self.criterionGAN(self.netD2_A(self.rec_A), True)
-            # Cycled Adversarial loss D2_B(G_A(G_B(B)))
-            self.loss_G2_B = self.criterionGAN(self.netD2_B(self.rec_B), True)
+            if self.opt.netG == 'resnet_phase':
+                self.loss_G2_A = self.criterionGAN(self.netD2_A_mag(self.rec_A[:,0:1,:,:]), True)*self.opt.mag_weight_adv+self.criterionGAN(self.netD2_A_phase(self.rec_A[:,1:2,:,:]), True)
+                # Cycled Adversarial loss D2_B(G_A(G_B(B)))
+                self.loss_G2_B = self.criterionGAN(self.netD2_B_mag(self.rec_B[:,0:1,:,:]), True)*self.opt.mag_weight_adv + self.criterionGAN(self.netD2_B_phase(self.rec_B[:,1:2,:,:]), True)
+            else:
+                self.loss_G2_A = self.criterionGAN(self.netD2_A(self.rec_A), True)
+                # Cycled Adversarial loss D2_B(G_A(G_B(B)))
+                self.loss_G2_B = self.criterionGAN(self.netD2_B(self.rec_B), True)
         else:
             self.loss_G2_A = 0
             self.loss_G2_B = 0
 
         # Forward cycle loss || G_B(G_A(A)) - A||
-        self.loss_cycle_A = self.criterionCycle(self.rec_A, self.real_A) * lambda_A
-        # Backward cycle loss || G_A(G_B(B)) - B||
-        self.loss_cycle_B = self.criterionCycle(self.rec_B, self.real_B) * lambda_B
+        if self.opt.netG == 'resnet_phase':
+            self.loss_cycle_A = (self.criterionCycle(self.rec_A[:,0:1,:,:], self.real_A[:,0:1,:,:])*self.opt.mag_weight_cycle+self.criterionCycle(self.rec_A[:,1:2,:,:], self.real_A[:,1:2,:,:])) * lambda_A
+            # Backward cycle loss || G_A(G_B(B)) - B||
+            self.loss_cycle_B = (self.criterionCycle(self.rec_B[:,0:1,:,:], self.real_B[:,0:1,:,:])*self.opt.mag_weight_cycle+self.criterionCycle(self.rec_B[:,1:2,:,:], self.real_B[:,1:2,:,:])) * lambda_B
+        else:
+            self.loss_cycle_A = self.criterionCycle(self.rec_A, self.real_A) * lambda_A
+            # Backward cycle loss || G_A(G_B(B)) - B||
+            self.loss_cycle_B = self.criterionCycle(self.rec_B, self.real_B) * lambda_B
         # combined loss and calculate gradients
         self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B + self.loss_G2_A + self.loss_G2_B
         self.loss_G.backward()
@@ -230,12 +327,26 @@ class AttentionGANModel(BaseModel):
         self.backward_G()             # calculate gradients for G_A and G_B
         self.optimizer_G.step()       # update G_A and G_B's weights
         # D_A and D_B
-        self.set_requires_grad([self.netD_A, self.netD_B], True)
-        self.optimizer_D.zero_grad()   # set D_A and D_B's gradients to zero
-        self.backward_D_A()      # calculate gradients for D_A
-        self.backward_D_B()      # calculate graidents for D_B
-        if self.opt.use_cycled_discriminators:
-            self.backward_D2_A()      # calculate gradients for D2_A
-            self.backward_D2_B()      # calculate graidents for D2_B
-        self.optimizer_D.step()  # update D_A and D_B's weights
+        if self.opt.netG == 'resnet_phase':
+            self.set_requires_grad([self.netD_A, self.netD_B], True)
+            self.optimizer_D.zero_grad()   # set D_A and D_B's gradients to zero
+            self.backward_D_A_mag()      # calculate gradients for D_A
+            self.backward_D_B_mag()      # calculate graidents for D_B
+            self.backward_D_A_phase()      # calculate gradients for D_A
+            self.backward_D_B_phase()      # calculate graidents for D_B
+            if self.opt.use_cycled_discriminators:
+                self.backward_D2_A_mag()      # calculate gradients for D2_A
+                self.backward_D2_B_mag()      # calculate graidents for D2_B
+                self.backward_D2_A_phase()      # calculate gradients for D2_A
+                self.backward_D2_B_phase()      # calculate graidents for D2_B
+            self.optimizer_D.step()  # update D_A and D_B's weights
+        else:
+            self.set_requires_grad([self.netD_A, self.netD_B], True)
+            self.optimizer_D.zero_grad()   # set D_A and D_B's gradients to zero
+            self.backward_D_A()      # calculate gradients for D_A
+            self.backward_D_B()      # calculate graidents for D_B
+            if self.opt.use_cycled_discriminators:
+                self.backward_D2_A()      # calculate gradients for D2_A
+                self.backward_D2_B()      # calculate graidents for D2_B
+            self.optimizer_D.step()  # update D_A and D_B's weights
 

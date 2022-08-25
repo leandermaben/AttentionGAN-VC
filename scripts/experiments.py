@@ -114,6 +114,21 @@ def timit_exp1(names,csv_path,noise_dBs, data_cache='/content/AttentionGAN-VC/da
         print(f'Finished experiment with {name}')
         print('#'*25)
 
+def timit_exp2(names,csv_path,noise_dBs, data_cache='/content/AttentionGAN-VC/data_cache',results_dir='/content/AttentionGAN-VC/results'):
+     for name, noise_dB in zip(names,noise_dBs):
+        print('#'*25)
+        print(f'Training {name} with SNR {noise_dB}')
+        run(f'python datasets/fetchData.py --transfer_mode timit_taslp --noise_dB {noise_dB}')
+        run(f'python train.py --dataroot data_cache --name {name} --model attention_gan --dataset_mode audio --pool_size 50 --no_dropout --norm instance --lambda_A 10 --lambda_B 10 --lambda_identity 0.5 --load_size_h 128 --load_size_w 128 --crop_size 128 --preprocess resize --batch_size 4 --niter 200 --niter_decay 0 --gpu_ids 0 --display_id 0 --display_freq 100 --print_freq 100 --input_nc 2 --output_nc 2 --use_cycled_discriminators --use_mask --max_mask_len 50 --checkpoints_dir /content/drive/MyDrive/TASLP/EXP1/checkpoints --no_html --netG resnet_phase')
+        run(f'python test.py --dataroot data_cache --name {name} --model attention_gan --dataset_mode audio --norm instance --phase test --no_dropout --load_size_h 128 --load_size_w 128 --crop_size 128 --batch_size 1 --gpu_ids 0 --input_nc 2 --output_nc 2 --use_mask --checkpoints_dir /content/drive/MyDrive/TASLP/EXP1/checkpoints --netG resnet_phase')
+        avg_lsd,std_lsd= lsd(os.path.join(data_cache,'noisy','test'),os.path.join(results_dir,name,'test_latest','audios','fake_B'),use_gender=False)
+        avg_mssl,std_mssl = mssl(os.path.join(data_cache,'noisy','test'),os.path.join(results_dir,name,'test_latest','audios','fake_B'),use_gender=False)
+        log(csv_path, name,f'Training {name} for EXP2 with SNR {noise_dB} for 200 epochs with cycled_disc, WITH special phase architecture and mask. LambdaA & B 10 , lambda_identity 0.5',avg_lsd,std_lsd,avg_mssl,std_mssl)
+    
+        shutil.rmtree(data_cache)
+        print(f'Finished experiment with {name}')
+        print('#'*25)
+
 if __name__ == '__main__':
     csv_path = '/content/drive/MyDrive/APSIPA/Results/logs.csv'
     if not os.path.exists(csv_path):

@@ -303,7 +303,8 @@ class AttentionGANModel(BaseModel):
         else:
             self.loss_G2_A = 0
             self.loss_G2_B = 0
-
+        print('**************************************')
+        print(f'In G_back rec_A-> {self.rec_A.size()}')
         # Forward cycle loss || G_B(G_A(A)) - A||
         if self.opt.netG == 'resnet_phase':
             self.loss_cycle_A = (self.criterionCycle(self.rec_A[:,0:1,:,:], self.real_A[:,0:1,:,:])*self.opt.mag_weight_cycle+self.criterionCycle(self.rec_A[:,1:2,:,:], self.real_A[:,1:2,:,:])) * lambda_A

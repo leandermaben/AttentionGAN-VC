@@ -119,8 +119,8 @@ def timit_exp2(names,csv_path,noise_dBs, data_cache='/content/AttentionGAN-VC/da
         print('#'*25)
         print(f'Training {name} with SNR {noise_dB}')
         run(f'python datasets/fetchData.py --transfer_mode timit_taslp --noise_dB {noise_dB}')
-        run(f'python train.py --dataroot data_cache --name {name} --model attention_gan --dataset_mode audio --pool_size 50 --no_dropout --norm instance --lambda_A 10 --lambda_B 10 --lambda_identity 0.5 --load_size_h 128 --load_size_w 128 --crop_size 128 --preprocess resize --batch_size 4 --niter 200 --niter_decay 0 --gpu_ids 0 --display_id 0 --display_freq 100 --print_freq 100 --input_nc 2 --output_nc 2 --use_cycled_discriminators --use_mask --max_mask_len 50 --checkpoints_dir /content/drive/MyDrive/TASLP/EXP1/checkpoints --no_html --netG resnet_phase')
-        run(f'python test.py --dataroot data_cache --name {name} --model attention_gan --dataset_mode audio --norm instance --phase test --no_dropout --load_size_h 128 --load_size_w 128 --crop_size 128 --batch_size 1 --gpu_ids 0 --input_nc 2 --output_nc 2 --use_mask --checkpoints_dir /content/drive/MyDrive/TASLP/EXP1/checkpoints --netG resnet_phase')
+        run(f'python train.py --dataroot data_cache --name {name} --model attention_gan --dataset_mode audio --pool_size 50 --no_dropout --norm instance --lambda_A 10 --lambda_B 10 --lambda_identity 0.5 --load_size_h 128 --load_size_w 128 --crop_size 128 --preprocess resize --batch_size 4 --niter 200 --niter_decay 0 --gpu_ids 0 --display_id 0 --display_freq 100 --print_freq 100 --input_nc 2 --output_nc 2 --use_cycled_discriminators --use_mask --max_mask_len 50 --checkpoints_dir /content/drive/MyDrive/TASLP/EXP2/checkpoints --no_html --netG resnet_phase --use_phase --mag_weight_cycle 4 --mag_weight_adv 4 --mag_weight_identity 4')
+        run(f'python test.py --dataroot data_cache --name {name} --model attention_gan --dataset_mode audio --norm instance --phase test --no_dropout --load_size_h 128 --load_size_w 128 --crop_size 128 --batch_size 1 --gpu_ids 0 --input_nc 2 --output_nc 2 --use_mask --checkpoints_dir /content/drive/MyDrive/TASLP/EXP2/checkpoints --netG resnet_phase --use_phase')
         avg_lsd,std_lsd= lsd(os.path.join(data_cache,'noisy','test'),os.path.join(results_dir,name,'test_latest','audios','fake_B'),use_gender=False)
         avg_mssl,std_mssl = mssl(os.path.join(data_cache,'noisy','test'),os.path.join(results_dir,name,'test_latest','audios','fake_B'),use_gender=False)
         log(csv_path, name,f'Training {name} for EXP2 with SNR {noise_dB} for 200 epochs with cycled_disc, WITH special phase architecture and mask. LambdaA & B 10 , lambda_identity 0.5',avg_lsd,std_lsd,avg_mssl,std_mssl)
@@ -130,15 +130,31 @@ def timit_exp2(names,csv_path,noise_dBs, data_cache='/content/AttentionGAN-VC/da
         print('#'*25)
 
 if __name__ == '__main__':
-    csv_path = '/content/drive/MyDrive/APSIPA/Results/logs.csv'
+
+    ##TASLP Experiments
+
+
+    csv_path = '/content/drive/MyDrive/TASLP/EXP2/logs.csv'
     if not os.path.exists(csv_path):
-        cols=['name','comment','min_lsd_epoch','min_mssl_epoch','avg_test_lsd_min_lsd_epoch','avg_test_mssl_min_lsd_epoch',	'avg_test_lsd_min_mssl_epoch','avg_test_mssl_min_mssl_epoch','min_val_lsd','min_val_mssl','std_test_lsd_min_lsd_epoch','std_test_mssl_min_lsd_epoch','std_test_lsd_min_mssl_epoch',	'std_test_mssl_min_mssl_epoch','avg_val_lsd','avg_val_mssl','std_val_lsd','std_val_mssl']
+        cols=['name','comment','avg_lsd','std_lsd','avg_mssl','std_mssl']
         df=pd.DataFrame(columns=cols)
         df.to_csv(csv_path,index=False)
     
+    noise_dBs = [0,-3,-6]
+    timit_exp2([f'AttentionGAN_new_arch_phase_mask_cycdisc_{i}dB' for i in noise_dBs],csv_path,noise_dBs)
 
-    sources = ['Non-Parallel/RATS']
-    apsipa_exp([f'AttentionGAN_nophase_mask_cycdisc_{i}' for i in ['np_rats']],csv_path,sources)
+
+    ##APSIPA Experiments
+
+    # csv_path = '/content/drive/MyDrive/APSIPA/Results/logs.csv'
+    # if not os.path.exists(csv_path):
+    #     cols=['name','comment','min_lsd_epoch','min_mssl_epoch','avg_test_lsd_min_lsd_epoch','avg_test_mssl_min_lsd_epoch',	'avg_test_lsd_min_mssl_epoch','avg_test_mssl_min_mssl_epoch','min_val_lsd','min_val_mssl','std_test_lsd_min_lsd_epoch','std_test_mssl_min_lsd_epoch','std_test_lsd_min_mssl_epoch',	'std_test_mssl_min_mssl_epoch','avg_val_lsd','avg_val_mssl','std_val_lsd','std_val_mssl']
+    #     df=pd.DataFrame(columns=cols)
+    #     df.to_csv(csv_path,index=False)
+    
+
+    # sources = ['Non-Parallel/RATS']
+    # apsipa_exp([f'AttentionGAN_nophase_mask_cycdisc_{i}' for i in ['np_rats']],csv_path,sources)
     
 
 

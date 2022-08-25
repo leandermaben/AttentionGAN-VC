@@ -706,7 +706,12 @@ def normal_init(m, mean, std):
 class ResnetGenerator_phase(nn.Module):
     # initializers
     def __init__(self, input_nc, output_nc, ngf=64, n_blocks=9):
-        super(ResnetGenerator_mask, self).__init__()
+
+
+        print('#'*25)
+        print('Using Resnet Phase')
+
+        super(ResnetGenerator_phase, self).__init__()
         self.input_nc = input_nc
         self.output_nc = output_nc
         self.ngf = ngf
@@ -734,10 +739,10 @@ class ResnetGenerator_phase(nn.Module):
         self.resnet_blocks_mag_second = []
         for i in range(n_blocks//2,n_blocks):
             self.resnet_blocks_mag_second.append(resnet_block(ngf * 4, 3, 1, 1))
-            self.resnet_blocks_mag_second[i].weight_init(0, 0.02)
+            self.resnet_blocks_mag_second[i-n_blocks//2].weight_init(0, 0.02)
 
         self.resnet_blocks_mag_first = nn.Sequential(*self.resnet_blocks_mag_first)
-        self.conv_11_mag = nn.Conv2d(ngf, ngf/2, 1, 1, 0)
+        self.conv_11_mag = nn.Conv2d(ngf*4, ngf*2, 1, 1, 0)
         self.resnet_blocks_mag_second = nn.Sequential(*self.resnet_blocks_mag_second)
 
 
@@ -749,10 +754,10 @@ class ResnetGenerator_phase(nn.Module):
         self.resnet_blocks_phase_second = []
         for i in range(n_blocks//2,n_blocks):
             self.resnet_blocks_phase_second.append(resnet_block(ngf * 4, 3, 1, 1))
-            self.resnet_blocks_phase_second[i].weight_init(0, 0.02)
+            self.resnet_blocks_phase_second[i-n_blocks//2].weight_init(0, 0.02)
 
         self.resnet_blocks_phase_first = nn.Sequential(*self.resnet_blocks_phase_first)
-        self.conv_11_phase = nn.Conv2d(ngf, ngf/2, 1, 1, 0)
+        self.conv_11_phase = nn.Conv2d(ngf*4, ngf*2, 1, 1, 0)
         self.resnet_blocks_phase_second = nn.Sequential(*self.resnet_blocks_phase_second)
 
         
@@ -811,9 +816,9 @@ class ResnetGenerator_phase(nn.Module):
         x_mag = input[:,0:1,:,:]*mask
         x_mag = torch.cat([x_mag,mask],dim=1)
         x_mag = F.pad(x_mag, (3, 3, 3, 3), 'reflect') # Check Padding Mode Later
-        x_mag = F.relu(self.conv1_norm(self.conv1(x_mag)))
-        x_mag = F.relu(self.conv2_norm(self.conv2(x_mag)))
-        x_mag = F.relu(self.conv3_norm(self.conv3(x_mag)))
+        x_mag = F.relu(self.conv1_norm_mag(self.conv1_mag(x_mag)))
+        x_mag = F.relu(self.conv2_norm_mag(self.conv2_mag(x_mag)))
+        x_mag = F.relu(self.conv3_norm_mag(self.conv3_mag(x_mag)))
         x_mag = self.resnet_blocks_mag_first(x_mag)
         x_mag_reduced = self.conv_11_mag(x_mag)
 
@@ -821,9 +826,9 @@ class ResnetGenerator_phase(nn.Module):
         x_phase = input[:,1:2,:,:]*mask
         x_phase = torch.cat([x_phase,mask],dim=1)
         x_phase = F.pad(x_phase, (3, 3, 3, 3), 'reflect') # Check Padding Mode Later
-        x_phase = F.relu(self.conv1_norm(self.conv1(x_phase)))
-        x_phase = F.relu(self.conv2_norm(self.conv2(x_phase)))
-        x_phase = F.relu(self.conv3_norm(self.conv3(x_phase)))
+        x_phase = F.relu(self.conv1_norm_phase(self.conv1_phase(x_phase)))
+        x_phase = F.relu(self.conv2_norm_phase(self.conv2_phase(x_phase)))
+        x_phase = F.relu(self.conv3_norm_phase(self.conv3_phase(x_phase)))
         x_phase = self.resnet_blocks_phase_first(x_phase)
         x_phase_reduced = self.conv_11_phase(x_phase)
 

@@ -27,6 +27,16 @@ def run(command):
 #     df.loc[len(df.index)] = {'name':name,'comment':comment,'avg_lsd':avg_lsd,'std_lsd':std_lsd,'avg_mssl':avg_mssl,'std_mssl':std_mssl}
 #     df.to_csv(path,index=False)
 
+
+def log_taslp(path,name,comment,avg_lsd,std_lsd,avg_mssl,std_mssl):
+    """
+    Created by Leander Maben.
+    """
+    df=pd.read_csv(path)
+    df.loc[len(df.index)] = {'name':name,'comment':comment,'avg_lsd':avg_lsd,'std_lsd':std_lsd,'avg_mssl':avg_mssl,'std_mssl':std_mssl}
+    df.to_csv(path,index=False)
+
+
 def log(path,info):
     """
     Created by Leander Maben.
@@ -123,7 +133,7 @@ def timit_exp2(names,csv_path,noise_dBs, data_cache='/content/AttentionGAN-VC/da
         run(f'python test.py --dataroot data_cache --name {name} --model attention_gan --dataset_mode audio --norm instance --phase test --no_dropout --load_size_h 128 --load_size_w 128 --crop_size 128 --batch_size 1 --gpu_ids 0 --input_nc 2 --output_nc 2 --use_mask --checkpoints_dir /content/drive/MyDrive/TASLP/EXP2/checkpoints --netG resnet_phase --use_phase')
         avg_lsd,std_lsd= lsd(os.path.join(data_cache,'noisy','test'),os.path.join(results_dir,name,'test_latest','audios','fake_B'),use_gender=False)
         avg_mssl,std_mssl = mssl(os.path.join(data_cache,'noisy','test'),os.path.join(results_dir,name,'test_latest','audios','fake_B'),use_gender=False)
-        log(csv_path, name,f'Training {name} for EXP2 with SNR {noise_dB} for 200 epochs with cycled_disc, WITH special phase architecture and mask. LambdaA & B 10 , lambda_identity 0.5',avg_lsd,std_lsd,avg_mssl,std_mssl)
+        log_taslp(csv_path, name,f'Training {name} for EXP2 with SNR {noise_dB} for 200 epochs with cycled_disc, WITH special phase architecture and mask. LambdaA & B 10 , lambda_identity 0.5',avg_lsd,std_lsd,avg_mssl,std_mssl)
     
         shutil.rmtree(data_cache)
         print(f'Finished experiment with {name}')
@@ -140,7 +150,7 @@ if __name__ == '__main__':
         df=pd.DataFrame(columns=cols)
         df.to_csv(csv_path,index=False)
     
-    noise_dBs = [0,-3,-6]
+    noise_dBs = [-3,-6]
     timit_exp2([f'AttentionGAN_new_arch_phase_mask_cycdisc_{i}dB' for i in noise_dBs],csv_path,noise_dBs)
 
 
